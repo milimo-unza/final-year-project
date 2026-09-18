@@ -1,0 +1,23 @@
+{% load harpr_extras %}
+<div class="task-row {% if t.priority == 'urgent' %}urgent-row{% endif %}"
+     data-task-id="{{ t.pk }}"
+     data-section="{{ section }}"
+     data-remove-on-complete="1">
+  <form method="post" action="{% url 'task_toggle' t.pk %}" class="task-form-toggle" data-ajax-toggle>
+    {% csrf_token %}
+    <input type="hidden" name="next" value="{% url 'dashboard' %}">
+    <button type="submit" class="checkbox-btn" aria-label="Mark done"></button>
+  </form>
+  <div>
+    <div class="task-title">
+      <a href="{% url 'task_edit' t.pk %}" data-modal="task-edit">{{ t.title }}</a>
+    </div>
+    <div class="task-meta">
+      {% if t.due_date %}{{ t.due_date|date:"H:i" }}{% if t.duration_minutes %} <span class="text-muted">({{ t.duration_minutes }}m)</span>{% endif %}<span class="sep">·</span>{% endif %}
+      <span class="cat-chip cat-{{ t.category }}">{{ t.category|cat_label:category_labels }}</span>
+    </div>
+  </div>
+  <div class="row-flex">
+    <span class="pill {{ t.priority }}">{{ t.get_priority_display }}</span>
+  </div>
+</div>

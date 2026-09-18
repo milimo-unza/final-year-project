@@ -1,0 +1,51 @@
+{% extends 'base.html' %}
+{% load static %}
+{% load harpr_extras %}
+{% block title %}Calendar · {{ APP_NAME }}{% endblock %}
+
+{% block head_extra %}
+  <link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.15/index.global.min.css" rel="stylesheet" />
+  <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.15/index.global.min.js"></script>
+{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div class="titles">
+    <h1>Calendar</h1>
+    <div class="meta">Tasks plotted on a monthly grid</div>
+  </div>
+  <div class="row-flex">
+    <a class="btn btn-primary" href="{% url 'task_create' %}" data-modal="task-new">+ New task</a>
+  </div>
+</div>
+
+<div class="card">
+  <div id="calendar" data-events-url="{% url 'calendar_events' %}"></div>
+</div>
+
+<p class="text-muted" style="font-size:12px; margin-top:8px;">
+  Tip: a coloured dot marks days with tasks. Click any day to see what's scheduled.
+</p>
+
+<div class="card mt-4">
+  <div class="card-head"><h2>Legend</h2></div>
+  <div class="row-flex" style="flex-wrap: wrap; gap: 18px; font-size: 12px;">
+    <div class="row-flex"><span class="legend-dot" style="background:{{ urgent_color }};"></span> Urgent (any priority)</div>
+    <div class="row-flex"><span class="legend-dot" style="background:{{ category_colors.work }};"></span> {{ category_labels.work }}</div>
+    <div class="row-flex"><span class="legend-dot" style="background:{{ category_colors.study }};"></span> {{ category_labels.study }}</div>
+    <div class="row-flex"><span class="legend-dot" style="background:{{ category_colors.personal }};"></span> {{ category_labels.personal }}</div>
+    <div class="row-flex"><span class="legend-dot" style="background:{{ category_colors.health }};"></span> {{ category_labels.health }}</div>
+    {% if show_public_holidays %}
+      <div class="row-flex"><span class="legend-dot" style="background:#9ca3af;"></span> Zambian public holiday</div>
+    {% endif %}
+  </div>
+  <p class="text-muted" style="font-size:11px; margin-top:8px;">
+    Days with multiple tasks show one dot for the highest-precedence item:
+    Urgent &rsaquo; Work &rsaquo; Study &rsaquo; Personal &rsaquo; Health.
+  </p>
+</div>
+{% endblock %}
+
+{% block scripts %}
+  <script src="{% static 'js/calendar.js' %}"></script>
+{% endblock %}

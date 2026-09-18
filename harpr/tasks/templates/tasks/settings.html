@@ -1,0 +1,187 @@
+{% extends 'base.html' %}
+{% block title %}Settings · {{ APP_NAME }}{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div class="titles">
+    <h1>Settings</h1>
+    <div class="meta">Account preferences for {{ APP_NAME }}</div>
+  </div>
+</div>
+
+<div class="card" style="max-width:560px;">
+  <div class="card-head"><h2>Appearance</h2></div>
+  <div class="form-grid">
+    <div class="form-row">
+      <label class="checkbox-line">
+        <input type="checkbox" id="dark-mode-toggle">
+        Use dark mode
+      </label>
+      <div class="helptext">
+        Saved in this browser only. The toggle in the sidebar (☀ / ☾) does the same thing.
+      </div>
+    </div>
+  </div>
+</div>
+
+<form method="post" id="settings-form">
+  {% csrf_token %}
+  {{ form.non_field_errors }}
+
+  <div class="card mt-4" style="max-width:560px;">
+    <div class="card-head"><h2>Notifications &amp; sound</h2></div>
+    <div class="form-grid">
+      <div class="form-row">
+        <label class="checkbox-line">
+          {{ form.notifications_enabled }}
+          Enable browser notifications for task reminders
+        </label>
+        {{ form.notifications_enabled.errors }}
+      </div>
+      <div class="form-row">
+        <label class="checkbox-line">
+          {{ form.pomodoro_sound_enabled }}
+          Play a sound when the Pomodoro finishes
+        </label>
+        {{ form.pomodoro_sound_enabled.errors }}
+      </div>
+      <div class="form-row">
+        <label class="checkbox-line">
+          {{ form.pomodoro_notification_enabled }}
+          Show a browser notification when the Pomodoro finishes
+        </label>
+        {{ form.pomodoro_notification_enabled.errors }}
+      </div>
+      <div class="helptext">
+        Browser notifications only fire while {{ APP_NAME }} is open in a tab.
+        On iOS they require {{ APP_NAME }} to be added to the Home Screen as a web app.
+      </div>
+    </div>
+  </div>
+
+  <div class="card mt-4" style="max-width:560px;">
+    <div class="card-head"><h2>Calendar</h2></div>
+    <div class="form-grid">
+      <div class="form-row">
+        <label class="checkbox-line">
+          {{ form.show_public_holidays }}
+          Show Zambian public holidays on the calendar
+        </label>
+        {{ form.show_public_holidays.errors }}
+        <div class="helptext">
+          Holidays appear as gray, non-editable events. Includes New Year's Day,
+          Women's Day, Youth Day, Good Friday, Easter Monday, Labour Day,
+          Africa Day, Heroes' Day, Unity Day, Farmers' Day, Independence Day,
+          Christmas Day and Boxing Day.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card mt-4" style="max-width:560px;">
+    <div class="card-head"><h2>Category names</h2></div>
+    <p class="text-muted" style="font-size:12px; margin-top:0;">
+      Rename your four task categories. The colours stay the same.
+    </p>
+    <div class="form-grid">
+      <div class="form-row">
+        <label for="{{ form.category_work_label.id_for_label }}">
+          <span class="legend-dot" style="background:{{ category_colors.work }};vertical-align:middle;"></span>
+          Work label
+        </label>
+        {{ form.category_work_label }}
+        {{ form.category_work_label.errors }}
+      </div>
+      <div class="form-row">
+        <label for="{{ form.category_study_label.id_for_label }}">
+          <span class="legend-dot" style="background:{{ category_colors.study }};vertical-align:middle;"></span>
+          Study label
+        </label>
+        {{ form.category_study_label }}
+        {{ form.category_study_label.errors }}
+      </div>
+      <div class="form-row">
+        <label for="{{ form.category_personal_label.id_for_label }}">
+          <span class="legend-dot" style="background:{{ category_colors.personal }};vertical-align:middle;"></span>
+          Personal label
+        </label>
+        {{ form.category_personal_label }}
+        {{ form.category_personal_label.errors }}
+      </div>
+      <div class="form-row">
+        <label for="{{ form.category_health_label.id_for_label }}">
+          <span class="legend-dot" style="background:{{ category_colors.health }};vertical-align:middle;"></span>
+          Health label
+        </label>
+        {{ form.category_health_label }}
+        {{ form.category_health_label.errors }}
+      </div>
+    </div>
+  </div>
+
+  <div class="form-actions" style="max-width:560px; margin-top:16px;">
+    <button type="submit" class="btn btn-primary">Save settings</button>
+  </div>
+</form>
+
+<div class="card mt-4" style="max-width:560px;">
+  <div class="card-head"><h2>Browser permission</h2></div>
+  <p class="text-muted" style="font-size:13px;">
+    Your browser also has its own permission for notifications.
+    Click the button below to grant {{ APP_NAME }} permission to show them.
+  </p>
+  <button type="button" class="btn" id="grant-perm-btn">Request browser permission</button>
+  <div class="text-muted mono" style="font-size:11px; margin-top:8px;" id="perm-status"></div>
+</div>
+
+<div class="card mt-4" style="max-width:560px;">
+  <div class="card-head"><h2>About {{ APP_NAME }}</h2></div>
+  <p class="text-muted" style="font-size:13px;">
+    {{ APP_NAME }} — {{ APP_TAGLINE }}. Built as a final-year university project.
+    See <em>BUILD.md</em>, <em>MANUAL.md</em>, and <em>README.md</em> in the
+    repository for the full feature list and usage notes.
+  </p>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  // ---- dark-mode toggle (mirrors sidebar) ----
+  var darkBox = document.getElementById('dark-mode-toggle');
+  if (darkBox) {
+    darkBox.checked = (document.documentElement.getAttribute('data-theme') === 'dark');
+    darkBox.addEventListener('change', function () {
+      var next = darkBox.checked ? 'dark' : 'light';
+      document.documentElement.setAttribute('data-theme', next);
+      try { localStorage.setItem('cosmos-theme', next); } catch (e) {}
+    });
+  }
+
+  // ---- browser permission button ----
+  var btn = document.getElementById('grant-perm-btn');
+  var status = document.getElementById('perm-status');
+  if (!btn || !status) return;
+  function render() {
+    if (!('Notification' in window)) {
+      status.textContent = 'This browser does not support notifications.';
+      btn.disabled = true; return;
+    }
+    status.textContent = 'Permission: ' + Notification.permission;
+  }
+  render();
+  btn.addEventListener('click', function () {
+    if (!('Notification' in window)) return;
+    Notification.requestPermission().then(function () {
+      render();
+      if (Notification.permission === 'granted') {
+        try { new Notification('{{ APP_NAME }}', { body: 'Notifications are working ✓', icon: '/static/favicon.svg' }); } catch (e) {}
+        if (window.HARPR && window.HARPR.toast) window.HARPR.toast('Notifications enabled in this browser.', 'success');
+      } else if (Notification.permission === 'denied') {
+        if (window.HARPR && window.HARPR.toast) window.HARPR.toast('Notifications were blocked. Re-enable from your browser settings.', 'error');
+      }
+    });
+  });
+});
+</script>
+{% endblock %}

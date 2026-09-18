@@ -1,0 +1,55 @@
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Editors
+.vscode/
+.idea/
+*.swp
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+env/
+ENV/
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+build/
+dist/
+
+# Node (in case either project has JS tooling)
+node_modules/
+npm-debug.log*
+yarn-error.log*
+.next/
+
+# Local tool state (scribe)
+.local/
+
+# Env / secrets
+.env
+.env.*
+!.env.example
+*.key
+*.pem
+credentials.json
+secrets.json
+
+# Databases
+*.sqlite
+*.db
+
+# Archives
+*.zip
+*.tar.gz
+*.7z
+*.rar
+
+# Logs
+*.log
+logs/

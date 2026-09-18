@@ -1,0 +1,33 @@
+{% extends 'base.html' %}
+{% block title %}Activity log · {{ APP_NAME }}{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div class="titles">
+    <h1>Activity log</h1>
+    <div class="meta">Your last {{ entries|length }} action{{ entries|length|pluralize }} (max 30)</div>
+  </div>
+</div>
+
+<div class="card">
+  {% if entries %}
+    <ul class="activity-list">
+      {% for e in entries %}
+        <li class="activity-item action-{{ e.action }}">
+          <span class="activity-time mono">{{ e.created_at|date:"D, M j · H:i" }}</span>
+          <span class="activity-action act-{{ e.action }}">{{ e.get_action_display }}</span>
+          <span class="activity-task">{{ e.task_title }}</span>
+          {% if e.action == 'deleted' and e.task_id and e.task and e.task.is_deleted %}
+            <a class="activity-undo" href="{% url 'trash_list' %}">Undo (Trash)</a>
+          {% endif %}
+        </li>
+      {% endfor %}
+    </ul>
+  {% else %}
+    <div class="empty">
+      Nothing here yet. Actions you take on tasks (create, edit, complete, delete, restore)
+      will show up here.
+    </div>
+  {% endif %}
+</div>
+{% endblock %}

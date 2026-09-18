@@ -1,0 +1,20 @@
+{% extends 'base.html' %}
+{% block title %}Delete task · {{ APP_NAME }}{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div class="titles">
+    <h1>Delete task</h1>
+    <div class="meta">Tasks go to the Trash bin and can be restored later</div>
+  </div>
+</div>
+
+<div class="card" style="max-width:520px;">
+  <p>Move <strong>{{ task.title }}</strong> to the Trash? You can restore or permanently delete it later from the Trash page.</p>
+  <form method="post" class="form-actions">
+    {% csrf_token %}
+    <button type="submit" class="btn btn-danger">Move to Trash</button>
+    <a class="btn btn-ghost" href="{% url 'task_list' %}">Cancel</a>
+  </form>
+</div>
+{% endblock %}

@@ -1,0 +1,128 @@
+This is my FINAL request. I have limited tokens. Make ALL these changes exactly as described.
+1. Theme & Display
+
+    Light theme background: change from white to #f5f5f0 (warm light gray)
+
+    Scale everything to 120% (html { font-size: 120%; })
+
+    Dark mode toggle: add to Settings page (it's missing on mobile)
+
+2. Notifications
+
+    Fix the permission request button (currently does nothing)
+
+    Add note: "Best on desktop Chrome. Mobile browsers have limitations."
+
+    Remove if can't fix - just document as known issue
+
+3. Calendar (Mobile & Desktop)
+
+    Month view: add green dot on days that have tasks
+
+    Click any day → modal popup showing ALL tasks for that day
+
+    From popup: click task to edit, or check to mark complete
+
+4. Today/Dashboard Page
+
+    Show ONLY pending tasks (remove completed from this view)
+
+    Show 5 tasks on mobile, 7 on desktop, rest scrollable
+
+    Sort by due time (earliest first)
+
+    Remove "Next 7 days" section
+
+    Replace with "Recently Completed" (last 5 completed tasks)
+
+    Remove KPI cards except: keep only "Pending: X" number
+
+    Remove Analytics page entirely (delete the link and view)
+
+    Remove Time Logging entirely (remove Log Time button, forms, timeline logs)
+
+5. New Timeline Page (Redesign)
+
+    Group tasks by date: "Today", "Tomorrow", "Mon, Apr 28", "Tue, Apr 29", etc.
+
+    Show day of week with date
+
+    For each date, list all tasks (pending + completed, but completed shown with strikethrough)
+
+    Users can edit/delete tasks from here
+
+    Add "Export CSV" button (exports all tasks as CSV)
+
+    This page replaces the old Tasks page as the main view
+
+6. Overdue Tasks
+
+    Tasks not completed on due date stay in their original date group (don't auto-move)
+
+    User sees them in Timeline on their original date
+
+    Can mark complete late or edit due date
+
+7. Pomodoro Timer
+
+    Default 25 minutes, but ADD a settings button to change time
+
+    Popup with number input (1-180 minutes)
+
+    For times over 60 min, show small text: "1hr 56min"
+
+    Remove "Linked task" feature (time logging is gone)
+
+8. Delete Confirmation (Modal, Not Page)
+
+    Delete button opens a modal popup, not a separate page
+
+    Options: Cancel / Move to Trash
+
+9. Toast Notifications for CRUD
+
+    When task added → popup "Task added" (bottom right, fades after 3 sec)
+
+    When task edited → "Task updated"
+
+    When task deleted → "Task moved to trash"
+
+    When restored → "Task restored"
+
+    Use simple JavaScript toast (no extra libraries)
+
+10. Natural Language Date Parser
+
+    Add chrono-node CDN: https://cdn.jsdelivr.net/npm/chrono-node@2.7.5/chrono.min.js
+
+    On task title input field, detect natural language dates
+
+    Examples: "tomorrow", "next Friday", "in 3 days", "on Apr 30"
+
+    When detected, auto-fill due date field and highlight the parsed text
+
+    Do NOT remove the manual date picker (user can override)
+
+11. Database Cleanup
+
+    Keep TimeLog table (don't delete data) but remove all UI references
+
+    Hide analytics page from navigation
+
+12. Documentation Updates
+
+    Update BUILD.md, MANUAL.md, README.md with all changes
+
+    Explicitly note: Time logging removed, Analytics removed, Timeline redesigned
+
+IMPORTANT
+
+    Test everything before saying done
+
+    This is my FINAL request - no more changes after this
+
+    Keep the Cosmos/Mono Grid design everywhere
+
+    Keep dark/light mode toggle working
+
+Do this perfectly."

@@ -1,0 +1,194 @@
+"I need these improvements to my Django Time and Activity Planner app. This is a final year student project - keep everything simple, readable, and believable as built by one person in 16 weeks.
+Current State
+
+    Working Django app with Tasks, Time Logs, Calendar, Analytics
+
+    Cosmos/Mono Grid design (dark/light theme toggle)
+
+    SQLite database
+
+Features to ADD (Priority Order)
+1. Browser Notifications with Reminders (3 hours)
+
+    Add a 'Remind me' checkbox on the task form
+
+    Options: 5 min before, 15 min before, 30 min before, 1 hour before, 1 day before
+
+    When due time approaches, browser shows a notification popup
+
+    Notification includes task title and due time
+
+    User must grant permission (standard browser permission request)
+
+    Add a global toggle in Settings page to turn ALL notifications ON/OFF
+
+    Use JavaScript Notification API
+
+    Background: Use setInterval to check every minute (simplest approach)
+
+    Note: Notifications only work while page is open (document as limitation)
+
+2. Task Duration / End Time (1 hour)
+
+    Add optional 'duration' field to Task model (integer minutes, default NULL)
+
+    On task form: add field "Duration (minutes)" or "End time"
+
+    In task list: show "2:00pm (1hr)" or "2:00pm → 3:00pm"
+
+    In calendar: show duration as block if possible
+
+3. Mobile Responsive CSS (2 hours)
+
+    Update cosmos.css to work on phones
+
+    Sidebar becomes bottom navigation bar on screens under 768px
+
+    Tables scroll horizontally (overflow-x: auto)
+
+    Forms stack vertically on mobile
+
+4. Scale Up App Display (5 minutes)
+
+    Add html { font-size: 115%; } to cosmos.css
+
+    Makes everything slightly larger
+
+5. Modal Popups (3 hours)
+
+    Change task creation and time logging to modal dialogs
+
+    Click "Add Task" → centered modal popup with form
+
+    Click "Log Time" → modal popup with form
+
+    Click "Edit Task" on any task → same modal with form pre-filled
+
+    Use Bootstrap modals (already available) or custom CSS modals
+
+    No page redirects
+
+6. Task Search and Filter (2 hours)
+
+    Add search bar at top of Tasks page
+
+    Search by task title and description (case-insensitive)
+
+    Add filter dropdown: All / Pending / Completed
+
+    Show result count
+
+7. Completed Tasks Archive (2 hours)
+
+    Add "Completed" tab or section on Tasks page
+
+    Shows tasks marked as done, sorted by completion date (newest first)
+
+    Option to un-complete (move back to pending)
+
+    Option to delete permanently
+
+8. Soft Delete / Trash Bin (3 hours - stretch)
+
+    When task deleted, move to "Trash" instead of permanent delete
+
+    Trash page shows deleted tasks for 30 days
+
+    Option to restore or permanently delete
+
+    Add a "Clear Trash" button
+
+    Document as "simple implementation - no automatic cleanup yet"
+
+9. Pomodoro Timer (4 hours)
+
+    Add Pomodoro section on Dashboard
+
+    25 minute countdown timer
+
+    Start, Pause, Reset buttons
+
+    Visual progress circle (optional)
+
+    Simple beep when time's up (using Web Audio)
+
+    Optional: Link to a selected task
+
+10. Keyboard Shortcuts (3 hours)
+
+    Add keyboard shortcuts:
+
+        N = New task modal
+
+        L = Log time modal
+
+        T = Go to Tasks page
+
+        C = Go to Calendar page
+
+        A = Go to Analytics page
+
+        ESC = Close modal
+
+    Show a small help tooltip on first visit or add a (?) icon
+
+11. Quick Done Button (1 hour)
+
+    On task list rows, add a checkmark button on hover
+
+    One click marks task complete
+
+    Changes to "Undo" button if already complete
+
+12. Export CSV (1 hour - optional)
+
+    Add "Export CSV" button on Timeline page
+
+    Downloads all time logs as CSV file
+
+    Columns: Task, Duration, Date, Notes
+
+Do NOT Remove or Change
+
+    Cosmos/Mono Grid design (dark/light theme)
+
+    All existing functionality remains
+
+    Database structure (add new fields if needed, don't break existing)
+
+Documentation (Write/Update These Files)
+
+Update BUILD.md with new sections for each feature added.
+Update MANUAL.md with instructions for each new feature.
+Update README.md with latest setup instructions.
+Future Work Section (Add to BUILD.md)
+
+Explicitly document these as NOT built (future work):
+
+    Recurring tasks (weekly/monthly/yearly)
+
+    Push notifications (when page closed - needs service worker)
+
+    Mobile app (Android/iOS)
+
+    WhatsApp/Twilio integration
+
+    AI/Gemini natural language
+
+    Task attachments/files
+
+    Task sharing/collaboration
+
+    Calendar sync (Google Calendar, iCal)
+
+Important Notes
+
+    The browser notifications only work while the page is open - document this limitation
+
+    The reminder check uses JavaScript setInterval checking every minute (simple, not production-grade)
+
+    For production, a cron job or Celery would be better - note this in documentation
+
+    This is a student project - simplicity > perfection
+
+Keep all code readable, commented, and not overly complex. No React, no TypeScript, no monorepo. Just plain Django, HTML, CSS, JavaScript."

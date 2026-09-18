@@ -1,0 +1,125 @@
+{% extends 'base.html' %}
+{% block title %}Settings · {{ APP_NAME }}{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div class="titles">
+    <h1>Settings</h1>
+    <div class="meta">Account preferences for {{ APP_NAME }}</div>
+  </div>
+</div>
+
+<div class="card" style="max-width:560px;">
+  <div class="card-head"><h2>Appearance</h2></div>
+  <div class="form-grid">
+    <div class="form-row">
+      <label class="checkbox-line">
+        <input type="checkbox" id="dark-mode-toggle">
+        Use dark mode
+      </label>
+      <div class="helptext">
+        Saved in this browser only. The toggle in the sidebar (☀ / ☾) does the same thing.
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="card mt-4" style="max-width:560px;">
+  <div class="card-head"><h2>Notifications</h2></div>
+  <form method="post" class="form-grid">
+    {% csrf_token %}
+    {{ form.non_field_errors }}
+
+    <div class="form-row">
+      <label class="checkbox-line">
+        {{ form.notifications_enabled }}
+        Enable browser notifications for task reminders
+      </label>
+      {{ form.notifications_enabled.errors }}
+      <div class="helptext">
+        When enabled, {{ APP_NAME }} will pop up a browser notification before tasks
+        that have a reminder set. Notifications only fire while {{ APP_NAME }} is open
+        in a browser tab — push notifications when the page is closed are listed under
+        Future work.
+      </div>
+      <div class="helptext" style="color: var(--accent); margin-top:8px;">
+        On mobile, browser notifications work best on Android Chrome / Firefox.
+        On iOS, notifications only appear if {{ APP_NAME }} has been added to the
+        Home Screen as a web app.
+      </div>
+    </div>
+
+    <div class="form-actions">
+      <button type="submit" class="btn btn-primary">Save settings</button>
+    </div>
+  </form>
+</div>
+
+<div class="card mt-4" style="max-width:560px;">
+  <div class="card-head"><h2>Browser permission</h2></div>
+  <p class="text-muted" style="font-size:13px;">
+    Your browser also has its own permission for notifications.
+    Click the button below to grant {{ APP_NAME }} permission to show them.
+  </p>
+  <button type="button" class="btn" id="grant-perm-btn">Request browser permission</button>
+  <div class="text-muted mono" style="font-size:11px; margin-top:8px;" id="perm-status"></div>
+</div>
+
+<div class="card mt-4" style="max-width:560px;">
+  <div class="card-head"><h2>About {{ APP_NAME }}</h2></div>
+  <p class="text-muted" style="font-size:13px;">
+    {{ APP_NAME }} — {{ APP_TAGLINE }}. Built as a final-year university project.
+    See the <em>BUILD.md</em>, <em>MANUAL.md</em>, and <em>README.md</em> files in the
+    repository for the full feature list and usage notes.
+  </p>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  // ---- dark-mode toggle (mirrors the sidebar button) ----
+  var darkBox = document.getElementById('dark-mode-toggle');
+  if (darkBox) {
+    darkBox.checked = (document.documentElement.getAttribute('data-theme') === 'dark');
+    darkBox.addEventListener('change', function () {
+      var next = darkBox.checked ? 'dark' : 'light';
+      document.documentElement.setAttribute('data-theme', next);
+      try { localStorage.setItem('cosmos-theme', next); } catch (e) {}
+    });
+  }
+
+  // ---- browser permission button ----
+  var btn = document.getElementById('grant-perm-btn');
+  var status = document.getElementById('perm-status');
+  if (!btn || !status) return;
+
+  function render() {
+    if (!('Notification' in window)) {
+      status.textContent = 'This browser does not support notifications.';
+      btn.disabled = true; return;
+    }
+    status.textContent = 'Permission: ' + Notification.permission;
+  }
+  render();
+  btn.addEventListener('click', function () {
+    if (!('Notification' in window)) return;
+    Notification.requestPermission().then(function () {
+      render();
+      if (Notification.permission === 'granted') {
+        try {
+          new Notification('{{ APP_NAME }}', { body: 'Notifications are working ✓', icon: '/static/favicon.svg' });
+        } catch (e) {}
+        if (window.HARPR && window.HARPR.toast) {
+          window.HARPR.toast('Notifications enabled in this browser.', 'success');
+        }
+      } else if (Notification.permission === 'denied') {
+        if (window.HARPR && window.HARPR.toast) {
+          window.HARPR.toast('Notifications were blocked. Re-enable them from your browser settings.', 'error');
+        }
+      }
+    });
+  });
+});
+</script>
+{% endblock %}

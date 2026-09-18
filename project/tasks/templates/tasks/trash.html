@@ -1,0 +1,51 @@
+{% extends 'base.html' %}
+{% block title %}Trash · {{ APP_NAME }}{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div class="titles">
+    <h1>Trash</h1>
+    <div class="meta">Recently deleted tasks. Restore or remove permanently.</div>
+  </div>
+  {% if tasks %}
+    <form method="post" action="{% url 'trash_clear' %}" onsubmit="return confirm('Permanently delete every task in the Trash? This cannot be undone.');" style="margin:0;">
+      {% csrf_token %}
+      <button type="submit" class="btn btn-danger">Clear Trash</button>
+    </form>
+  {% endif %}
+</div>
+
+<div class="card">
+  {% if tasks %}
+    {% for t in tasks %}
+      <div class="task-row">
+        <div></div>
+        <div>
+          <div class="task-title text-muted">{{ t.title }}</div>
+          <div class="task-meta">
+            Deleted {{ t.deleted_at|date:"M j, Y H:i" }}
+            <span class="sep">·</span>{{ t.get_category_display }}
+            {% if t.due_date %}<span class="sep">·</span>was due {{ t.due_date|date:"M j" }}{% endif %}
+          </div>
+        </div>
+        <div class="row-flex">
+          <form method="post" action="{% url 'trash_restore' t.pk %}" style="margin:0;">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-sm">Restore</button>
+          </form>
+          <form method="post" action="{% url 'trash_purge' t.pk %}" onsubmit="return confirm('Permanently delete this task?');" style="margin:0;">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-sm btn-danger">Delete forever</button>
+          </form>
+        </div>
+      </div>
+    {% endfor %}
+  {% else %}
+    <div class="empty">Trash is empty.</div>
+  {% endif %}
+</div>
+
+<p class="text-muted" style="font-size:11px; margin-top:12px;">
+  Note: deleted tasks are kept in the Trash for 30 days. Automatic cleanup is not yet implemented — for now you can clear the Trash manually with the button above.
+</p>
+{% endblock %}

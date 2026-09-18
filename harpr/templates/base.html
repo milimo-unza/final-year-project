@@ -1,0 +1,277 @@
+{% load static %}<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>{% block title %}{{ APP_NAME }} — {{ APP_TAGLINE }}{% endblock %}</title>
+
+  <link rel="icon" type="image/svg+xml" href="{% static 'favicon.svg' %}" />
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+
+  <link rel="stylesheet" href="{% static 'css/cosmos.css' %}" />
+
+  <script>
+    // FOUC-prevention: apply saved theme before paint
+    (function () {
+      try {
+        var stored = localStorage.getItem('cosmos-theme');
+        var theme = stored || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+        document.documentElement.setAttribute('data-theme', theme);
+      } catch (e) {}
+    })();
+  </script>
+
+  {% block head_extra %}{% endblock %}
+</head>
+<body>
+  {% if user.is_authenticated %}
+    <div class="layout">
+      <aside class="sidebar">
+        <div class="sidebar-brand">
+          <div class="brand-mark" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+              <path d="M5 20 Q5 4 20 4"/>
+              <line x1="5" y1="20" x2="20" y2="20"/>
+              <line x1="20" y1="4" x2="20" y2="20"/>
+              <line x1="9" y1="20" x2="9" y2="11"/>
+              <line x1="13" y1="20" x2="13" y2="7"/>
+              <line x1="17" y1="20" x2="17" y2="5"/>
+            </svg>
+          </div>
+          <div class="brand-text">
+            <div class="brand-name">{{ APP_NAME }}</div>
+            <div class="brand-sub mono">{{ APP_TAGLINE }}</div>
+          </div>
+        </div>
+
+        <nav class="sidenav">
+          <a href="{% url 'dashboard' %}" class="navlink {% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}">
+            <span class="nav-dot"></span> Today
+          </a>
+          <a href="{% url 'timeline' %}" class="navlink {% if request.resolver_match.url_name == 'timeline' or request.resolver_match.url_name == 'task_create' or request.resolver_match.url_name == 'task_edit' %}active{% endif %}">
+            <span class="nav-dot"></span> Timeline
+          </a>
+          <a href="{% url 'calendar' %}" class="navlink {% if request.resolver_match.url_name == 'calendar' %}active{% endif %}">
+            <span class="nav-dot"></span> Calendar
+          </a>
+          <a href="{% url 'activity_log' %}" class="navlink {% if request.resolver_match.url_name == 'activity_log' %}active{% endif %}">
+            <span class="nav-dot"></span> Activity log
+          </a>
+          <a href="{% url 'trash_list' %}" class="navlink {% if request.resolver_match.url_name == 'trash_list' %}active{% endif %}">
+            <span class="nav-dot"></span> Trash
+          </a>
+          <a href="{% url 'settings' %}" class="navlink {% if request.resolver_match.url_name == 'settings' %}active{% endif %}">
+            <span class="nav-dot"></span> Settings
+          </a>
+        </nav>
+
+        <div class="sidebar-footer">
+          <div class="user-chip">
+            <div class="user-avatar mono">{{ user.username|slice:":2"|upper }}</div>
+            <div class="user-meta">
+              <div class="user-name">{{ user.username }}</div>
+              <div class="user-version mono">v1.3</div>
+            </div>
+          </div>
+          <div class="footer-actions">
+            <button id="theme-toggle" class="icon-btn" type="button" title="Toggle theme" aria-label="Toggle theme">
+              <span class="theme-icon-light">☀</span>
+              <span class="theme-icon-dark">☾</span>
+            </button>
+            <button id="shortcuts-help" class="icon-btn" type="button" title="Keyboard shortcuts" aria-label="Keyboard shortcuts">?</button>
+            <form method="post" action="{% url 'logout' %}" style="margin:0;">
+              {% csrf_token %}
+              <button type="submit" class="icon-btn" title="Sign out" aria-label="Sign out">⏻</button>
+            </form>
+          </div>
+        </div>
+      </aside>
+
+      <main class="main">
+        {% if messages %}
+          <div class="messages" data-messages hidden>
+            {% for m in messages %}<div class="message" data-tag="{{ m.tags }}">{{ m }}</div>{% endfor %}
+          </div>
+        {% endif %}
+        {% block content %}{% endblock %}
+      </main>
+    </div>
+
+    <!-- Modal: New / Edit task -->
+    <div class="modal-backdrop" id="task-modal" hidden>
+      <div class="modal" role="dialog" aria-modal="true" aria-labelledby="task-modal-title">
+        <div class="modal-head">
+          <h2 id="task-modal-title">New task</h2>
+          <button type="button" class="icon-btn modal-close" aria-label="Close">✕</button>
+        </div>
+        <div class="modal-body" id="task-modal-body">
+          <div class="modal-loading">Loading…</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal: Delete confirmation -->
+    <div class="modal-backdrop" id="delete-modal" hidden>
+      <div class="modal" role="dialog" aria-modal="true" aria-labelledby="delete-modal-title" style="max-width:420px;">
+        <div class="modal-head">
+          <h2 id="delete-modal-title">Move to Trash?</h2>
+          <button type="button" class="icon-btn modal-close" aria-label="Close">✕</button>
+        </div>
+        <div class="modal-body">
+          <p class="delete-modal-text">Move <strong id="delete-modal-task-title">this task</strong> to the Trash? You can restore it later from the Trash page.</p>
+          <form method="post" id="delete-modal-form" class="form-actions" action="">
+            {% csrf_token %}
+            <input type="hidden" name="next" id="delete-modal-next" value="">
+            <button type="button" class="btn btn-ghost modal-close">Cancel</button>
+            <span class="spacer"></span>
+            <button type="submit" class="btn btn-danger">Move to Trash</button>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal: Day tasks (calendar) -->
+    <div class="modal-backdrop" id="day-modal" hidden>
+      <div class="modal" role="dialog" aria-modal="true" aria-labelledby="day-modal-title">
+        <div class="modal-head">
+          <h2 id="day-modal-title">Tasks for the day</h2>
+          <button type="button" class="icon-btn modal-close" aria-label="Close">✕</button>
+        </div>
+        <div class="modal-body" id="day-modal-body">
+          <div class="modal-loading">Loading…</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal: Pomodoro settings -->
+    <div class="modal-backdrop" id="pomo-settings-modal" hidden>
+      <div class="modal" role="dialog" aria-modal="true" aria-labelledby="pomo-settings-title" style="max-width:360px;">
+        <div class="modal-head">
+          <h2 id="pomo-settings-title">Pomodoro length</h2>
+          <button type="button" class="icon-btn modal-close" aria-label="Close">✕</button>
+        </div>
+        <div class="modal-body">
+          <form id="pomo-settings-form" class="form-grid" onsubmit="return false;">
+            <div class="form-row">
+              <label for="pomo-minutes-input">Minutes (1 – 180)</label>
+              <input type="number" id="pomo-minutes-input" min="1" max="180" step="1" value="25">
+              <div class="helptext" id="pomo-pretty-hint"></div>
+            </div>
+            <div class="form-actions">
+              <button type="button" class="btn btn-ghost modal-close">Cancel</button>
+              <span class="spacer"></span>
+              <button type="button" class="btn btn-primary" id="pomo-save-btn">Save</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal: Pomodoro reset confirmation -->
+    <div class="modal-backdrop" id="pomo-reset-modal" hidden>
+      <div class="modal" role="dialog" aria-modal="true" aria-labelledby="pomo-reset-title" style="max-width:380px;">
+        <div class="modal-head">
+          <h2 id="pomo-reset-title">Reset timer?</h2>
+          <button type="button" class="icon-btn modal-close" aria-label="Close">✕</button>
+        </div>
+        <div class="modal-body">
+          <p style="font-size:14px; margin: 0 0 16px;">Reset timer? Your progress will be lost.</p>
+          <div class="form-actions">
+            <button type="button" class="btn btn-ghost modal-close">Cancel</button>
+            <span class="spacer"></span>
+            <button type="button" class="btn btn-danger" id="pomo-reset-confirm-btn">Reset</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal: Keyboard shortcuts help -->
+    <div class="modal-backdrop" id="shortcuts-modal" hidden>
+      <div class="modal" role="dialog" aria-modal="true" aria-labelledby="shortcuts-modal-title">
+        <div class="modal-head">
+          <h2 id="shortcuts-modal-title">Keyboard shortcuts</h2>
+          <button type="button" class="icon-btn modal-close" aria-label="Close">✕</button>
+        </div>
+        <div class="modal-body">
+          <table class="shortcuts-table">
+            <tr><td><kbd>N</kbd></td><td>New task</td></tr>
+            <tr><td><kbd>T</kbd></td><td>Go to Timeline</td></tr>
+            <tr><td><kbd>C</kbd></td><td>Go to Calendar</td></tr>
+            <tr><td><kbd>D</kbd></td><td>Go to Today (Dashboard)</td></tr>
+            <tr><td><kbd>A</kbd></td><td>Go to Activity log</td></tr>
+            <tr><td><kbd>?</kbd></td><td>Open this help</td></tr>
+            <tr><td><kbd>Esc</kbd></td><td>Close modal / clear search</td></tr>
+          </table>
+          <p class="text-muted" style="font-size:12px; margin-top:12px;">
+            Shortcuts are disabled while you're typing in a form field.
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Toast container -->
+    <div id="toast-container" aria-live="polite" aria-atomic="true"></div>
+
+    <!-- Mobile bottom nav (hidden on desktop) -->
+    <nav class="mobile-nav" aria-label="Primary">
+      <a href="{% url 'dashboard' %}" class="mobile-nav-item {% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}">
+        <span class="mobile-nav-glyph">◐</span><span>Today</span>
+      </a>
+      <a href="{% url 'timeline' %}" class="mobile-nav-item {% if request.resolver_match.url_name == 'timeline' %}active{% endif %}">
+        <span class="mobile-nav-glyph">≡</span><span>Timeline</span>
+      </a>
+      <a href="{% url 'calendar' %}" class="mobile-nav-item {% if request.resolver_match.url_name == 'calendar' %}active{% endif %}">
+        <span class="mobile-nav-glyph">▦</span><span>Calendar</span>
+      </a>
+      <a href="{% url 'activity_log' %}" class="mobile-nav-item {% if request.resolver_match.url_name == 'activity_log' %}active{% endif %}">
+        <span class="mobile-nav-glyph">⟳</span><span>Activity</span>
+      </a>
+      <a href="{% url 'settings' %}" class="mobile-nav-item {% if request.resolver_match.url_name == 'settings' %}active{% endif %}">
+        <span class="mobile-nav-glyph">⚙</span><span>Settings</span>
+      </a>
+    </nav>
+  {% else %}
+    <main class="auth-shell">
+      {% block auth_content %}{% endblock %}
+    </main>
+  {% endif %}
+
+  <script>
+    (function () {
+      var btn = document.getElementById('theme-toggle');
+      if (!btn) return;
+      btn.addEventListener('click', function () {
+        var cur = document.documentElement.getAttribute('data-theme') || 'light';
+        var next = cur === 'dark' ? 'light' : 'dark';
+        document.documentElement.setAttribute('data-theme', next);
+        try { localStorage.setItem('cosmos-theme', next); } catch (e) {}
+      });
+    })();
+  </script>
+
+  {% if user.is_authenticated %}
+    <script>
+      window.HARPR = {
+        urls: {
+          taskCreate: "{% url 'task_create' %}",
+          timeline: "{% url 'timeline' %}",
+          calendar: "{% url 'calendar' %}",
+          dashboard: "{% url 'dashboard' %}",
+          activityLog: "{% url 'activity_log' %}",
+          remindersDue: "{% url 'reminders_due' %}",
+          calendarDayBase: "/calendar/day/"
+        },
+        notificationsEnabled: {{ notifications_enabled|yesno:"true,false" }},
+        pomodoroSoundEnabled: {{ pomodoro_sound_enabled|yesno:"true,false" }},
+        pomodoroNotificationEnabled: {{ pomodoro_notification_enabled|yesno:"true,false" }}
+      };
+    </script>
+    <script src="{% static 'js/harpr.js' %}"></script>
+  {% endif %}
+
+  {% block scripts %}{% endblock %}
+</body>
+</html>

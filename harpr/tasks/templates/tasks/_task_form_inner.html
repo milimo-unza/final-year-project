@@ -1,0 +1,67 @@
+{# Reusable inner form so it can be loaded into the modal as well as a full page. #}
+<form method="post"
+      action="{% if is_edit %}{% url 'task_edit' task.pk %}{% else %}{% url 'task_create' %}{% endif %}"
+      class="form-grid"
+      data-is-edit="{% if is_edit %}1{% else %}0{% endif %}">
+  {% csrf_token %}
+  {{ form.non_field_errors }}
+
+  <div class="form-row">
+    <label for="{{ form.title.id_for_label }}">Title</label>
+    {{ form.title }}
+    {{ form.title.errors }}
+    <div class="chrono-hint" data-chrono-hint hidden></div>
+    <div class="helptext">Try natural language like "Submit report tomorrow 5pm" or "in 3 days at 9am" — the date field fills in for you.</div>
+  </div>
+
+  <div class="form-row">
+    <label for="{{ form.description.id_for_label }}">Description</label>
+    {{ form.description }}
+    {{ form.description.errors }}
+  </div>
+
+  <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 14px;">
+    <div class="form-row">
+      <label for="{{ form.due_date.id_for_label }}">Due date / time</label>
+      {{ form.due_date }}
+      {{ form.due_date.errors }}
+      <div class="helptext">Leave blank to send to "Someday".</div>
+    </div>
+    <div class="form-row">
+      <label for="{{ form.duration_minutes.id_for_label }}">Duration (minutes)</label>
+      {{ form.duration_minutes }}
+      {{ form.duration_minutes.errors }}
+    </div>
+  </div>
+
+  <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 14px;">
+    <div class="form-row">
+      <label for="{{ form.category.id_for_label }}">Category</label>
+      {{ form.category }}
+      {{ form.category.errors }}
+    </div>
+    <div class="form-row">
+      <label for="{{ form.priority.id_for_label }}">Priority</label>
+      {{ form.priority }}
+      {{ form.priority.errors }}
+    </div>
+  </div>
+
+  <div class="form-row">
+    <label for="{{ form.remind_minutes_before.id_for_label }}">Remind me</label>
+    {{ form.remind_minutes_before }}
+    {{ form.remind_minutes_before.errors }}
+    <div class="helptext">Shows a browser notification before the due time.</div>
+  </div>
+
+  <div class="form-actions">
+    <button type="submit" class="btn btn-primary">{% if is_edit %}Save changes{% else %}Create task{% endif %}</button>
+    <a class="btn btn-ghost modal-close" href="{% url 'timeline' %}">Cancel</a>
+    {% if is_edit %}
+      <span class="spacer"></span>
+      <button type="button" class="btn btn-danger"
+              data-delete-task="{% url 'task_delete' task.pk %}"
+              data-task-title="{{ task.title|escape }}">Delete</button>
+    {% endif %}
+  </div>
+</form>
