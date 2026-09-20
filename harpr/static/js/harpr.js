@@ -479,6 +479,23 @@
   // ---------- pomodoro completion sound + notification ---------------------
 
   function beep() {
+    // Try the harp sample first (static/audio/harpr.m4a). If it fails
+    // for any reason — missing file, browser blocks autoplay, codec
+    // not supported — fall back to a synthetic two-tone beep.
+    try {
+      var audio = new Audio('/static/audio/harpr.m4a');
+      audio.volume = 0.6;
+      var p = audio.play();
+      if (p && p.catch) {
+        p.catch(function () { syntheticBeep(); });
+      }
+      return;
+    } catch (e) {
+      syntheticBeep();
+    }
+  }
+
+  function syntheticBeep() {
     try {
       var ctx = new (window.AudioContext || window.webkitAudioContext)();
       var o = ctx.createOscillator();

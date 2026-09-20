@@ -2,20 +2,39 @@ from django import forms
 from .models import Task, UserSettings
 
 
+HOUR_CHOICES = [(f"{h:02d}", f"{h:02d}") for h in range(24)]
+MINUTE_CHOICES = [(f"{m:02d}", f"{m:02d}") for m in range(0, 60, 5)]
+
+
 class TaskForm(forms.ModelForm):
+    # --- replaced datetime-local widget with two helper dropdowns ---
+    due_date_only = forms.DateField(
+        required=False,
+        widget=forms.DateInput(attrs={"type": "date"}),
+        label="Date",
+    )
+    due_hour = forms.ChoiceField(
+        required=False,
+        choices=[("", "--")] + HOUR_CHOICES,
+        label="Hour",
+    )
+    due_minute = forms.ChoiceField(
+        required=False,
+        choices=[("", "--")] + MINUTE_CHOICES,
+        label="Minute",
+    )
     remind_minutes_before = forms.TypedChoiceField(
         coerce=int,
         choices=Task.REMIND_CHOICES,
         required=False,
-        initial=5,
-        label="Remind me",
+        initial=0,
+        label="Reminder",
     )
 
     class Meta:
         model = Task
         fields = (
             "title",
-            "description",
             "due_date",
             "duration_minutes",
             "category",
@@ -23,23 +42,62 @@ class TaskForm(forms.ModelForm):
             "remind_minutes_before",
         )
         widgets = {
-            "due_date": forms.DateTimeInput(
-                attrs={"type": "datetime-local"},
-                format="%Y-%m-%dT%H:%M",
-            ),
-            "description": forms.Textarea(attrs={"rows": 3}),
-            "duration_minutes": forms.NumberInput(attrs={"min": 0, "placeholder": "e.g. 60"}),
-            "title": forms.TextInput(attrs={"data-chrono": "1", "autocomplete": "off"}),
-        }
-        labels = {
-            "duration_minutes": "Duration (minutes)",
+            "title": forms.TextInput(attrs={"autocomplete": "off", "placeholder": "What needs doing?"}),
+            "due_date": forms.HiddenInput(),
+            "duration_minutes": forms.NumberInput(attrs={"min": 0, "placeholder": "Minutes"}),
         }
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.fields["due_date"].input_formats = ["%Y-%m-%dT%H:%M"]
+        # duration not required
         self.fields["duration_minutes"].required = False
-        self.fields["due_date"].required = False  # tasks can be "Someday"
+        # Set initial values from the instance's due_date on edit
+        if self.instance and self.instance.pk and self.instance.due_date:
+            local = self.instance.due_date
+            # Django gives aware datetimes; use localtime for display
+            from django.utils import timezone
+            local = timezone.localtime(local)
+            self.fields["due_date_only"].initial = local.date()
+            self.fields["due_hour"].initial = f"{local.hour:02d}"
+            self.fields["due_minute"].initial = f"{local.minute // 15 * 15:02d}"
+
+    def clean(self):
+        cleaned = super().clean()
+        date_only = cleaned.get("due_date_only")
+        hour = cleaned.get("due_hour")
+        minute = cleaned.get("due_minute")
+
+        if date_only and hour and minute:
+            from datetime import datetime
+            from django.utils import timezone
+            naive = datetime(
+                date_only.year, date_only.month, date_only.day,
+                int(hour), int(minute),
+            )
+            cleaned["due_date"] = timezone.make_aware(
+                naive, timezone.get_current_timezone()
+            )
+        elif date_only and not hour:
+            # Date given, no time: default 17:00
+            from datetime import datetime
+            from django.utils import timezone
+            naive = datetime(date_only.year, date_only.month, date_only.day, 17, 0)
+            cleaned["due_date"] = timezone.make_aware(
+                naive, timezone.get_current_timezone()
+            )
+        elif not date_only:
+            # No date given: Someday bucket.
+            cleaned["due_date"] = None
+
+        return cleaned
+
+    def save(self, commit=True):
+        instance = super().save(commit=False)
+        if "due_date" in self.cleaned_data:
+            instance.due_date = self.cleaned_data["due_date"]
+        if commit:
+            instance.save()
+        return instance
 
 
 class SettingsForm(forms.ModelForm):
@@ -56,12 +114,12 @@ class SettingsForm(forms.ModelForm):
             "category_health_label",
         )
         labels = {
-            "notifications_enabled": "Enable browser notifications",
-            "pomodoro_sound_enabled": "Play a sound when the Pomodoro finishes",
-            "pomodoro_notification_enabled": "Show a browser notification when the Pomodoro finishes",
-            "show_public_holidays": "Show Zambian public holidays on the calendar",
-            "category_work_label": "Work label",
-            "category_study_label": "Study label",
-            "category_personal_label": "Personal label",
-            "category_health_label": "Health label",
+            "notifications_enabled": "Browser reminders",
+            "pomodoro_sound_enabled": "Timer sound",
+            "pomodoro_notification_enabled": "Timer notification",
+            "show_public_holidays": "Zambian public holidays",
+            "category_work_label": "Work",
+            "category_study_label": "Study",
+            "category_personal_label": "Personal",
+            "category_health_label": "Health",
         }

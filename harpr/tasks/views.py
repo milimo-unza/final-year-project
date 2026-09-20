@@ -16,20 +16,16 @@ from .forms import SettingsForm, TaskForm
 from .models import ActivityLog, Task, UserSettings
 
 
-# --- Activity log helper -----------------------------------------------------
+# --- helpers -----------------------------------------------------------------
 
 def _log(user, action, task):
-    """Record a user-visible action; capped at 30 per user."""
     try:
         ActivityLog.record(user, action, task)
     except Exception:
         pass
 
 
-# --- Priority/category sort key ---------------------------------------------
-
 def _sort_key(t):
-    """Sort: incomplete first, then by priority (urgent → low), then by due."""
     completed_rank = 1 if t.completed else 0
     pri_rank = Task.PRIORITY_RANK.get(t.priority, 99)
     due = t.due_date or timezone.now() + timedelta(days=3650)
@@ -40,7 +36,6 @@ def _sort_key(t):
 
 @login_required
 def dashboard(request):
-    """Today page: TODAY → SOMEDAY → TOMORROW sections (in that order)."""
     user = request.user
     now = timezone.localtime()
     start_today = now.replace(hour=0, minute=0, second=0, microsecond=0)
@@ -66,8 +61,16 @@ def dashboard(request):
         key=_sort_key,
     )
 
-    # Pending count = today + someday only (per spec)
-    pending_count = len(todays_pending) + len(someday_pending)
+    # Overdue = incomplete tasks whose due date is strictly before today.
+    overdue_tasks = sorted(
+        Task.objects.filter(
+            user=user, completed=False,
+            due_date__lt=start_today,
+        ),
+        key=lambda t: t.due_date or start_today,
+    )
+
+    pending_count = Task.objects.filter(user=user, completed=False).count()
 
     recently_completed = (
         Task.objects.filter(user=user, completed=True)
@@ -78,13 +81,14 @@ def dashboard(request):
         "todays_pending": todays_pending,
         "someday_pending": someday_pending,
         "tomorrows_pending": tomorrows_pending,
+        "overdue_tasks": overdue_tasks,
         "pending_count": pending_count,
         "recently_completed": recently_completed,
         "today": now,
     })
 
 
-# --- Timeline (chronological: PAST → TODAY → TOMORROW → FUTURE) -------------
+# --- Timeline (grouped by date) ----------------------------------------------
 
 @login_required
 def timeline(request):
@@ -92,7 +96,7 @@ def timeline(request):
     today = timezone.localdate()
 
     qs = Task.objects.filter(user=user)
-    by_date = {}     # date -> tasks
+    by_date = {}
     someday = []
     for t in qs:
         if not t.due_date:
@@ -112,14 +116,12 @@ def timeline(request):
 
     groups = OrderedDict()
 
-    # PAST (chronological — oldest first)
     for d in sorted(k for k in by_date if k < today):
         groups[d.isoformat()] = {
             "label": label_for(d), "tasks": sorted(by_date[d], key=_sort_key),
             "is_today": False, "is_overdue": True, "date": d,
         }
 
-    # TODAY (anchor for the floating button)
     if today in by_date:
         groups[today.isoformat()] = {
             "label": "Today", "tasks": sorted(by_date[today], key=_sort_key),
@@ -131,7 +133,6 @@ def timeline(request):
             "is_overdue": False, "date": today, "empty_today": True,
         }
 
-    # FUTURE — chronological forward
     for d in sorted(k for k in by_date if k > today):
         groups[d.isoformat()] = {
             "label": label_for(d), "tasks": sorted(by_date[d], key=_sort_key),
@@ -212,33 +213,36 @@ def task_toggle(request, pk):
     _log(request.user, "completed" if task.completed else "reopened", task)
 
     if request.headers.get("X-Requested-With") == "XMLHttpRequest":
-        # Recompute counts so the dashboard KPI can update without a reload.
-        now = timezone.localtime()
-        start_today = now.replace(hour=0, minute=0, second=0, microsecond=0)
-        end_today = start_today + timedelta(days=1)
-        n_today = Task.objects.filter(
-            user=request.user, completed=False,
-            due_date__gte=start_today, due_date__lt=end_today,
-        ).count()
-        n_someday = Task.objects.filter(
-            user=request.user, completed=False, due_date__isnull=True,
-        ).count()
+        n_pending = Task.objects.filter(user=request.user, completed=False).count()
         return JsonResponse({
             "ok": True,
             "id": task.pk,
             "completed": task.completed,
-            "today_pending_count": n_today,
-            "someday_pending_count": n_someday,
-            "today_someday_count": n_today + n_someday,
-            "is_today_task": bool(
-                task.due_date and start_today <= timezone.localtime(task.due_date) < end_today
-            ),
-            "is_someday_task": task.due_date is None,
+            "pending_count": n_pending,
         })
     return redirect(request.POST.get("next") or "timeline")
 
 
-# --- Trash bin ---------------------------------------------------------------
+@login_required
+@require_POST
+def task_move_to_today(request, pk):
+    """Push an overdue task's due date to today (keep the time, or set 5pm)."""
+    task = get_object_or_404(Task, pk=pk, user=request.user)
+    now = timezone.localtime()
+    if task.due_date:
+        old = timezone.localtime(task.due_date)
+        # Keep the original time of day, move the date to today.
+        new_due = now.replace(hour=old.hour, minute=old.minute, second=0, microsecond=0)
+    else:
+        new_due = now.replace(hour=17, minute=0, second=0, microsecond=0)
+    task.due_date = new_due
+    task.save(update_fields=["due_date"])
+    _log(request.user, "edited", task)
+    messages.success(request, "Task moved to today")
+    return redirect(request.POST.get("next") or "dashboard")
+
+
+# --- Trash -------------------------------------------------------------------
 
 @login_required
 def trash_list(request):
@@ -262,7 +266,6 @@ def trash_purge(request, pk):
     task = get_object_or_404(Task.all_objects, pk=pk, user=request.user, is_deleted=True)
     title = task.title
     task.delete()
-    # Record purge as a logged action (task FK becomes null via SET_NULL)
     ActivityLog.objects.create(user=request.user, action="purged", task_title=title[:200])
     messages.info(request, "Task permanently deleted")
     return redirect("trash_list")
@@ -283,7 +286,6 @@ def calendar(request):
     return render(request, "tasks/calendar.html")
 
 
-# Zambian public holidays — fixed Easter dates for 2024-2027.
 _EASTER = {
     2024: (date(2024, 3, 29), date(2024, 4, 1)),
     2025: (date(2025, 4, 18), date(2025, 4, 21)),
@@ -328,13 +330,12 @@ def zambian_holidays(year):
 
 @login_required
 def calendar_events(request):
-    """Return holiday events + per-day task dot info."""
+    """Return events (holidays) + per-day dot info for the calendar."""
     user = request.user
     settings_obj = UserSettings.for_user(user)
 
     qs = Task.objects.filter(user=user, due_date__isnull=False)
 
-    # Per-date dot precedence: urgent overrides; otherwise lowest CATEGORY_RANK.
     per_day = {}
     for t in qs:
         iso = timezone.localtime(t.due_date).date().isoformat()
@@ -356,8 +357,7 @@ def calendar_events(request):
     events = []
     if settings_obj.show_public_holidays:
         today = timezone.localdate()
-        years = {today.year, today.year + 1}
-        for y in years:
+        for y in {today.year, today.year + 1}:
             for d, name in zambian_holidays(y):
                 events.append({
                     "title": name,
@@ -372,6 +372,7 @@ def calendar_events(request):
                     "extendedProps": {"holiday": True},
                 })
     return JsonResponse({"events": events, "dots": dots})
+
 
 
 @login_required
@@ -422,7 +423,7 @@ def calendar_day_tasks(request, year, month, day):
     })
 
 
-# --- Reminders endpoint ------------------------------------------------------
+# --- Reminders ---------------------------------------------------------------
 
 @login_required
 def reminders_due(request):
@@ -494,7 +495,7 @@ def settings_view(request):
     })
 
 
-# --- Activity Log ------------------------------------------------------------
+# --- Activity log ------------------------------------------------------------
 
 @login_required
 def activity_log_view(request):

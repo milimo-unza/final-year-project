@@ -9,3 +9,18 @@ db.sqlite3-journal
 venv/
 staticfiles/
 .DS_Store
+
+# Local backups
+*.bak
+*.before-overflow
+*.dotversion.bak
+*.backup
+static/js/*.bak
+
+# Replit / agent artifacts
+.replit
+.replit-artifact/
+
+# Dated backups
+*.dots-version
+../harpr-backup-*/

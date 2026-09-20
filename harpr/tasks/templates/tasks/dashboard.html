@@ -5,85 +5,127 @@
 {% block content %}
 <div class="page-head">
   <div class="titles">
-    <h1>Today's overview</h1>
-    <div class="meta">{{ today|date:"l, F j, Y" }}</div>
+    <h1>Today</h1>
+    <div class="meta">{{ today|date:"l, F j" }}</div>
   </div>
   <div class="row-flex">
-    <a class="btn btn-primary" href="{% url 'task_create' %}" data-modal="task-new">+ New task</a>
-  </div>
-</div>
-
-<div class="kpi-grid kpi-grid--single">
-  <div class="kpi">
-    <div class="label">Pending (today + someday)</div>
-    <div class="value" data-pending-kpi>{{ pending_count }}</div>
+    <a class="btn btn-primary" href="{% url 'task_create' %}" data-modal="task-new">New task</a>
   </div>
 </div>
 
 <div class="two-col">
+
+  {# ---------------- LEFT: task sections ---------------- #}
   <div>
 
-    {# ---------- TODAY ---------- #}
+    {% if overdue_tasks %}
+      <div class="card overdue-card">
+        <div class="card-head">
+          <h2><span class="dot dot-overdue"></span> Overdue</h2>
+          <span class="meta">{{ overdue_tasks|length }} task{{ overdue_tasks|length|pluralize }}</span>
+        </div>
+        <div class="task-scroll dashboard-list task-scroll--hidden" data-section="overdue">
+          {% for t in overdue_tasks %}
+            <div class="task-row overdue-row" data-task-id="{{ t.pk }}">
+              <form method="post" action="{% url 'task_toggle' t.pk %}" class="task-form-toggle" data-ajax-toggle>
+                {% csrf_token %}
+                <input type="hidden" name="next" value="{% url 'dashboard' %}">
+                <button type="submit" class="checkbox-btn" aria-label="Mark done"></button>
+              </form>
+              <div>
+                <div class="task-title">
+                  <a href="{% url 'task_edit' t.pk %}" data-modal="task-edit">{{ t.title }}</a>
+                </div>
+                <div class="task-meta">
+                  Was due {{ t.due_date|date:"D, M j · H:i" }}
+                  <span class="sep">·</span>
+                  <span class="cat-chip cat-{{ t.category }}">{{ t.category|cat_label:category_labels }}</span>
+                </div>
+              </div>
+              <div class="row-flex">
+                <form method="post" action="{% url 'task_move_to_today' t.pk %}" class="inline-form">
+                  {% csrf_token %}
+                  <button type="submit" class="btn btn-sm btn-ghost">Move to today</button>
+                </form>
+                <span class="pill {{ t.priority }}">{{ t.get_priority_display }}</span>
+              </div>
+            </div>
+          {% endfor %}
+        </div>
+      </div>
+    {% endif %}
+
     <div class="card">
       <div class="card-head">
         <h2>Today</h2>
-        <a class="card-link" href="{% url 'timeline' %}">All tasks →</a>
+        <a class="card-link" href="{% url 'timeline' %}">View all</a>
       </div>
 
       {% if todays_pending %}
-        <div class="task-scroll dashboard-list" data-section="today">
+        <div class="task-scroll task-scroll--hidden dashboard-list" data-section="today">
           {% for t in todays_pending %}
             {% include 'tasks/_dashboard_row.html' with t=t section='today' %}
           {% endfor %}
         </div>
       {% else %}
-        <div class="empty">No pending tasks for today. Take a breath, or
-          <a href="{% url 'task_create' %}" data-modal="task-new">add one</a>.</div>
-      {% endif %}
-    </div>
-
-    {# ---------- SOMEDAY ---------- #}
-    <div class="card mt-4">
-      <div class="card-head">
-        <h2>Someday</h2>
-        <span class="text-muted mono" style="font-size:11px;">no due date</span>
-      </div>
-      {% if someday_pending %}
-        <div class="task-scroll dashboard-list" data-section="someday">
-          {% for t in someday_pending %}
-            {% include 'tasks/_dashboard_row.html' with t=t section='someday' %}
-          {% endfor %}
+        <div class="empty">
+          Nothing due today.
+          <a href="{% url 'task_create' %}" data-modal="task-new">Add a task</a>.
         </div>
-      {% else %}
-        <div class="empty">Nothing parked for "someday". Tasks added without a date land here.</div>
       {% endif %}
     </div>
 
-    {# ---------- TOMORROW ---------- #}
-    <div class="card mt-4">
+    <div class="card">
       <div class="card-head">
         <h2>Tomorrow</h2>
-        <span class="text-muted mono" style="font-size:11px;">a peek ahead</span>
+        <span class="meta">Preview</span>
       </div>
       {% if tomorrows_pending %}
-        <div class="task-scroll dashboard-list" data-section="tomorrow">
+        <div class="task-scroll task-scroll--hidden dashboard-list" data-section="tomorrow">
           {% for t in tomorrows_pending %}
             {% include 'tasks/_dashboard_row.html' with t=t section='tomorrow' %}
           {% endfor %}
         </div>
       {% else %}
-        <div class="empty">Nothing scheduled for tomorrow yet.</div>
+        <div class="empty">Nothing scheduled.</div>
       {% endif %}
     </div>
 
-    <div class="card mt-4">
+    {% if someday_pending %}
+      <div class="card">
+        <div class="card-head">
+          <h2>Someday</h2>
+          <span class="meta">No due date</span>
+        </div>
+        <div class="task-scroll task-scroll--hidden dashboard-list" data-section="someday">
+          {% for t in someday_pending %}
+            {% include 'tasks/_dashboard_row.html' with t=t section='someday' %}
+          {% endfor %}
+        </div>
+      </div>
+    {% endif %}
+
+  </div>
+
+  {# ---------------- RIGHT: Pending, Pomodoro, Recently completed ---------------- #}
+  <div class="side-rail">
+
+    <div class="card">
+      <div class="card-head"><h2>Pending</h2></div>
+      <div class="stat-block">
+        <div class="stat-value" data-pending-kpi>{{ pending_count }}</div>
+        <div class="stat-sub">open tasks in total</div>
+      </div>
+    </div>
+
+    <div class="card">
       <div class="card-head">
-        <h2>Pomodoro</h2>
-        <button type="button" class="pomodoro-settings-btn" id="pomo-settings-btn">⚙ Settings</button>
+        <h2>Focus timer</h2>
+        <button type="button" class="pomodoro-settings-btn" id="pomo-settings-btn">Settings</button>
       </div>
       <div class="pomodoro" id="pomodoro">
         <div class="pomodoro-display" id="pomo-display">25:00</div>
-        <div class="pomodoro-sub" id="pomo-sub">25 min focus block</div>
+        <div class="pomodoro-sub" id="pomo-sub">25 min</div>
         <div class="pomodoro-actions">
           <button type="button" class="btn btn-primary btn-sm" id="pomo-start">Start</button>
           <button type="button" class="btn btn-sm" id="pomo-pause">Pause</button>
@@ -91,9 +133,7 @@
         </div>
       </div>
     </div>
-  </div>
 
-  <div>
     <div class="card">
       <div class="card-head"><h2>Recently completed</h2></div>
       {% if recently_completed %}
@@ -105,15 +145,16 @@
                 <a href="{% url 'task_edit' t.pk %}" data-modal="task-edit">{{ t.title }}</a>
               </div>
               <div class="upcoming-meta">
-                Done {{ t.completed_at|date:"D, M j · H:i" }} · {{ t.category|cat_label:category_labels }}
+                {{ t.completed_at|date:"M j · H:i" }}
               </div>
             </div>
           </div>
         {% endfor %}
       {% else %}
-        <div class="text-muted" style="font-size:12px;">Nothing completed yet — knock one out!</div>
+        <div class="text-muted" style="font-size:0.85rem;">Nothing completed yet.</div>
       {% endif %}
     </div>
+
   </div>
 </div>
 {% endblock %}
@@ -121,7 +162,6 @@
 {% block scripts %}
 <script>
 (function () {
-  // Pomodoro timer
   var STORAGE_KEY = 'harpr-pomo-minutes';
   var minutes = parseInt(localStorage.getItem(STORAGE_KEY) || '25', 10);
   if (isNaN(minutes) || minutes < 1) minutes = 25;
@@ -147,10 +187,10 @@
   }
 
   function pretty(min) {
-    if (min < 60) return min + ' min focus block';
+    if (min < 60) return min + ' min';
     var hr = Math.floor(min / 60), rem = min % 60;
-    if (rem === 0) return hr + 'hr focus block';
-    return hr + 'hr ' + rem + 'min focus block';
+    if (rem === 0) return hr + ' hr';
+    return hr + ' hr ' + rem + ' min';
   }
 
   function render() {
@@ -175,7 +215,6 @@
   startBtn.addEventListener('click', start);
   pauseBtn.addEventListener('click', pause);
 
-  // ---- reset confirmation modal ----
   resetBtn.addEventListener('click', function () {
     if (window.HARPR && window.HARPR.openModal) {
       window.HARPR.openModal('pomo-reset-modal');
@@ -184,7 +223,6 @@
         doReset.onclick = function () {
           reset();
           window.HARPR.closeModal(document.getElementById('pomo-reset-modal'));
-          if (window.HARPR.toast) window.HARPR.toast('Pomodoro reset', 'info');
         };
       }
     } else {
@@ -192,18 +230,17 @@
     }
   });
 
-  // ---- settings popup ----
   function showHint() {
     if (!minutesInput || !prettyHint) return;
     var v = parseInt(minutesInput.value, 10);
     if (isNaN(v) || v < 1 || v > 180) {
-      prettyHint.textContent = 'Enter a number from 1 to 180.';
+      prettyHint.textContent = 'Enter 1 to 180.';
       return;
     }
     if (v < 60) prettyHint.textContent = v + ' min';
     else {
       var hr = Math.floor(v / 60), rem = v % 60;
-      prettyHint.textContent = (rem === 0) ? (hr + 'hr') : (hr + 'hr ' + rem + 'min');
+      prettyHint.textContent = (rem === 0) ? (hr + ' hr') : (hr + ' hr ' + rem + ' min');
     }
   }
 
@@ -226,10 +263,8 @@
       localStorage.setItem(STORAGE_KEY, String(minutes));
       reset();
       if (window.HARPR && window.HARPR.closeModal) {
-        var modal = document.getElementById('pomo-settings-modal');
-        window.HARPR.closeModal(modal);
+        window.HARPR.closeModal(document.getElementById('pomo-settings-modal'));
       }
-      if (window.HARPR && window.HARPR.toast) window.HARPR.toast('Pomodoro length set to ' + pretty(minutes).replace(' focus block', ''), 'success');
     });
   }
 

@@ -3,18 +3,17 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>{% block title %}{{ APP_NAME }} — {{ APP_TAGLINE }}{% endblock %}</title>
+  <title>{% block title %}Harpr{% endblock %}</title>
 
   <link rel="icon" type="image/svg+xml" href="{% static 'favicon.svg' %}" />
 
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Lora:wght@500;600;700&family=Source+Sans+3:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
 
   <link rel="stylesheet" href="{% static 'css/cosmos.css' %}" />
 
   <script>
-    // FOUC-prevention: apply saved theme before paint
     (function () {
       try {
         var stored = localStorage.getItem('cosmos-theme');
@@ -31,19 +30,9 @@
     <div class="layout">
       <aside class="sidebar">
         <div class="sidebar-brand">
-          <div class="brand-mark" aria-hidden="true">
-            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
-              <path d="M5 20 Q5 4 20 4"/>
-              <line x1="5" y1="20" x2="20" y2="20"/>
-              <line x1="20" y1="4" x2="20" y2="20"/>
-              <line x1="9" y1="20" x2="9" y2="11"/>
-              <line x1="13" y1="20" x2="13" y2="7"/>
-              <line x1="17" y1="20" x2="17" y2="5"/>
-            </svg>
-          </div>
+          <div class="brand-mark" aria-hidden="true"><img src="{% static 'favicon.svg' %}" alt="" width="20" height="20"></div>
           <div class="brand-text">
             <div class="brand-name">{{ APP_NAME }}</div>
-            <div class="brand-sub mono">{{ APP_TAGLINE }}</div>
           </div>
         </div>
 
@@ -58,13 +47,14 @@
             <span class="nav-dot"></span> Calendar
           </a>
           <a href="{% url 'activity_log' %}" class="navlink {% if request.resolver_match.url_name == 'activity_log' %}active{% endif %}">
-            <span class="nav-dot"></span> Activity log
+            <span class="nav-dot"></span> Activity
           </a>
           <a href="{% url 'trash_list' %}" class="navlink {% if request.resolver_match.url_name == 'trash_list' %}active{% endif %}">
             <span class="nav-dot"></span> Trash
           </a>
           <a href="{% url 'settings' %}" class="navlink {% if request.resolver_match.url_name == 'settings' %}active{% endif %}">
             <span class="nav-dot"></span> Settings
+            <span class="reminders-pip {% if notifications_enabled %}on{% else %}off{% endif %}" title="{% if notifications_enabled %}Reminders are on{% else %}Reminders are off{% endif %}"></span>
           </a>
         </nav>
 
@@ -73,7 +63,7 @@
             <div class="user-avatar mono">{{ user.username|slice:":2"|upper }}</div>
             <div class="user-meta">
               <div class="user-name">{{ user.username }}</div>
-              <div class="user-version mono">v1.3</div>
+              <div class="user-version mono">v1.0</div>
             </div>
           </div>
           <div class="footer-actions">
@@ -100,11 +90,11 @@
       </main>
     </div>
 
-    <!-- Modal: New / Edit task -->
+    <!-- Modal: task create / edit -->
     <div class="modal-backdrop" id="task-modal" hidden>
       <div class="modal" role="dialog" aria-modal="true" aria-labelledby="task-modal-title">
         <div class="modal-head">
-          <h2 id="task-modal-title">New task</h2>
+          <h2 id="task-modal-title">Task</h2>
           <button type="button" class="icon-btn modal-close" aria-label="Close">✕</button>
         </div>
         <div class="modal-body" id="task-modal-body">
@@ -113,31 +103,31 @@
       </div>
     </div>
 
-    <!-- Modal: Delete confirmation -->
+    <!-- Modal: delete confirm -->
     <div class="modal-backdrop" id="delete-modal" hidden>
-      <div class="modal" role="dialog" aria-modal="true" aria-labelledby="delete-modal-title" style="max-width:420px;">
+      <div class="modal" role="dialog" aria-modal="true" aria-labelledby="delete-modal-title" style="max-width:440px;">
         <div class="modal-head">
-          <h2 id="delete-modal-title">Move to Trash?</h2>
+          <h2 id="delete-modal-title">Move to trash?</h2>
           <button type="button" class="icon-btn modal-close" aria-label="Close">✕</button>
         </div>
         <div class="modal-body">
-          <p class="delete-modal-text">Move <strong id="delete-modal-task-title">this task</strong> to the Trash? You can restore it later from the Trash page.</p>
+          <p class="delete-modal-text">Move <strong id="delete-modal-task-title">this task</strong> to the trash? You can restore it later from the Trash page.</p>
           <form method="post" id="delete-modal-form" class="form-actions" action="">
             {% csrf_token %}
             <input type="hidden" name="next" id="delete-modal-next" value="">
             <button type="button" class="btn btn-ghost modal-close">Cancel</button>
             <span class="spacer"></span>
-            <button type="submit" class="btn btn-danger">Move to Trash</button>
+            <button type="submit" class="btn btn-danger">Move to trash</button>
           </form>
         </div>
       </div>
     </div>
 
-    <!-- Modal: Day tasks (calendar) -->
+    <!-- Modal: calendar day -->
     <div class="modal-backdrop" id="day-modal" hidden>
       <div class="modal" role="dialog" aria-modal="true" aria-labelledby="day-modal-title">
         <div class="modal-head">
-          <h2 id="day-modal-title">Tasks for the day</h2>
+          <h2 id="day-modal-title">Tasks</h2>
           <button type="button" class="icon-btn modal-close" aria-label="Close">✕</button>
         </div>
         <div class="modal-body" id="day-modal-body">
@@ -146,11 +136,11 @@
       </div>
     </div>
 
-    <!-- Modal: Pomodoro settings -->
+    <!-- Modal: pomodoro length -->
     <div class="modal-backdrop" id="pomo-settings-modal" hidden>
-      <div class="modal" role="dialog" aria-modal="true" aria-labelledby="pomo-settings-title" style="max-width:360px;">
+      <div class="modal" role="dialog" aria-modal="true" aria-labelledby="pomo-settings-title" style="max-width:380px;">
         <div class="modal-head">
-          <h2 id="pomo-settings-title">Pomodoro length</h2>
+          <h2 id="pomo-settings-title">Timer length</h2>
           <button type="button" class="icon-btn modal-close" aria-label="Close">✕</button>
         </div>
         <div class="modal-body">
@@ -170,15 +160,15 @@
       </div>
     </div>
 
-    <!-- Modal: Pomodoro reset confirmation -->
+    <!-- Modal: pomodoro reset confirm -->
     <div class="modal-backdrop" id="pomo-reset-modal" hidden>
-      <div class="modal" role="dialog" aria-modal="true" aria-labelledby="pomo-reset-title" style="max-width:380px;">
+      <div class="modal" role="dialog" aria-modal="true" aria-labelledby="pomo-reset-title" style="max-width:400px;">
         <div class="modal-head">
           <h2 id="pomo-reset-title">Reset timer?</h2>
           <button type="button" class="icon-btn modal-close" aria-label="Close">✕</button>
         </div>
         <div class="modal-body">
-          <p style="font-size:14px; margin: 0 0 16px;">Reset timer? Your progress will be lost.</p>
+          <p style="font-size:1rem; margin: 0 0 20px;">Your progress will be lost.</p>
           <div class="form-actions">
             <button type="button" class="btn btn-ghost modal-close">Cancel</button>
             <span class="spacer"></span>
@@ -188,7 +178,7 @@
       </div>
     </div>
 
-    <!-- Modal: Keyboard shortcuts help -->
+    <!-- Modal: shortcuts -->
     <div class="modal-backdrop" id="shortcuts-modal" hidden>
       <div class="modal" role="dialog" aria-modal="true" aria-labelledby="shortcuts-modal-title">
         <div class="modal-head">
@@ -198,24 +188,19 @@
         <div class="modal-body">
           <table class="shortcuts-table">
             <tr><td><kbd>N</kbd></td><td>New task</td></tr>
-            <tr><td><kbd>T</kbd></td><td>Go to Timeline</td></tr>
-            <tr><td><kbd>C</kbd></td><td>Go to Calendar</td></tr>
-            <tr><td><kbd>D</kbd></td><td>Go to Today (Dashboard)</td></tr>
-            <tr><td><kbd>A</kbd></td><td>Go to Activity log</td></tr>
-            <tr><td><kbd>?</kbd></td><td>Open this help</td></tr>
-            <tr><td><kbd>Esc</kbd></td><td>Close modal / clear search</td></tr>
+            <tr><td><kbd>T</kbd></td><td>Timeline</td></tr>
+            <tr><td><kbd>C</kbd></td><td>Calendar</td></tr>
+            <tr><td><kbd>D</kbd></td><td>Today</td></tr>
+            <tr><td><kbd>A</kbd></td><td>Activity</td></tr>
+            <tr><td><kbd>?</kbd></td><td>This help</td></tr>
+            <tr><td><kbd>Esc</kbd></td><td>Close modal</td></tr>
           </table>
-          <p class="text-muted" style="font-size:12px; margin-top:12px;">
-            Shortcuts are disabled while you're typing in a form field.
-          </p>
         </div>
       </div>
     </div>
 
-    <!-- Toast container -->
     <div id="toast-container" aria-live="polite" aria-atomic="true"></div>
 
-    <!-- Mobile bottom nav (hidden on desktop) -->
     <nav class="mobile-nav" aria-label="Primary">
       <a href="{% url 'dashboard' %}" class="mobile-nav-item {% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}">
         <span class="mobile-nav-glyph">◐</span><span>Today</span>
@@ -230,7 +215,7 @@
         <span class="mobile-nav-glyph">⟳</span><span>Activity</span>
       </a>
       <a href="{% url 'settings' %}" class="mobile-nav-item {% if request.resolver_match.url_name == 'settings' %}active{% endif %}">
-        <span class="mobile-nav-glyph">⚙</span><span>Settings</span>
+        <span class="mobile-nav-glyph">⚙<span class="reminders-pip {% if notifications_enabled %}on{% else %}off{% endif %}"></span></span><span>Settings</span>
       </a>
     </nav>
   {% else %}
