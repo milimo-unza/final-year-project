@@ -4,89 +4,68 @@
 {% block title %}Calendar · {{ APP_NAME }}{% endblock %}
 
 {% block head_extra %}
-  {% if view == 'month' %}
-    <link href="https://unpkg.com/fullcalendar@6.1.15/index.global.min.css" rel="stylesheet" />
-    <script src="https://unpkg.com/fullcalendar@6.1.15/index.global.min.js"></script>
-  {% endif %}
+  <link href="https://unpkg.com/fullcalendar@6.1.15/index.global.min.css" rel="stylesheet" />
+  <script src="https://unpkg.com/fullcalendar@6.1.15/index.global.min.js"></script>
 {% endblock %}
 
 {% block content %}
 <div class="page-head">
   <div class="titles">
     <h1>Calendar</h1>
-    <div class="meta">{{ month_label|default:"Tasks plotted on a grid" }}</div>
   </div>
   <div class="row-flex">
     <a class="btn btn-primary" href="{% url 'task_create' %}" data-modal="task-new">New task</a>
   </div>
 </div>
 
-{# ---- single, unified toolbar for all three views ---- #}
-<div class="cal-toolbar">
-  <div class="cal-toolbar-nav">
-    <a class="icon-btn" href="?view={{ view }}&start={{ prev_start }}" title="Previous">‹</a>
-    <a class="icon-btn" href="?view={{ view }}&start={{ today_iso }}" title="Today">·</a>
-    <a class="icon-btn" href="?view={{ view }}&start={{ next_start }}" title="Next">›</a>
+<div class="card cal-card">
+  {# ---- toolbar ---- #}
+  <div class="cal-toolbar">
+    <div class="cal-toolbar-nav">
+      <button type="button" class="icon-btn" data-cal-nav="prev" title="Previous">‹</button>
+      <button type="button" class="icon-btn" data-cal-nav="today" title="Today">·</button>
+      <button type="button" class="icon-btn" data-cal-nav="next" title="Next">›</button>
+    </div>
+    <div class="cal-toolbar-label" id="cal-label">{{ month_label }}</div>
+    <div class="cal-toolbar-tabs">
+      <button type="button" class="view-tab active" data-cal-view="month">Month</button>
+      <button type="button" class="view-tab" data-cal-view="week">Week</button>
+      <button type="button" class="view-tab" data-cal-view="list">List</button>
+    </div>
   </div>
-  <div class="cal-toolbar-tabs">
-    <a class="view-tab {% if view == 'month' %}active{% endif %}" href="?view=month">Month</a>
-    <a class="view-tab {% if view == 'week'  %}active{% endif %}" href="?view=week">Week</a>
-    <a class="view-tab {% if view == 'list'  %}active{% endif %}" href="?view=list">List</a>
-  </div>
-  <div class="cal-toolbar-label">{{ month_label }}</div>
-</div>
 
-{# ---------------- MONTH VIEW ---------------- #}
-{% if view == 'month' %}
-  <div class="card">
+  {# ---- month view ---- #}
+  <div class="cal-view" id="cal-month">
     <div id="calendar" data-events-url="{% url 'calendar_events' %}"></div>
   </div>
 
-  <div class="card mt-4">
-    <div class="card-head"><h2>Legend</h2></div>
-    <div class="row-flex" style="flex-wrap: wrap; gap: 18px; font-size: 12px;">
-      <div class="row-flex"><span class="legend-dot" style="background:{{ urgent_color }};"></span> Urgent</div>
-      <div class="row-flex"><span class="legend-dot" style="background:{{ category_colors.work }};"></span> {{ category_labels.work }}</div>
-      <div class="row-flex"><span class="legend-dot" style="background:{{ category_colors.study }};"></span> {{ category_labels.study }}</div>
-      <div class="row-flex"><span class="legend-dot" style="background:{{ category_colors.personal }};"></span> {{ category_labels.personal }}</div>
-      <div class="row-flex"><span class="legend-dot" style="background:{{ category_colors.health }};"></span> {{ category_labels.health }}</div>
-      {% if show_public_holidays %}
-        <div class="row-flex"><span class="legend-dot" style="background:#9ca3af;"></span> Public holiday</div>
-      {% endif %}
+  {# ---- week view ---- #}
+  <div class="cal-view" id="cal-week" hidden>
+    <div class="week-grid">
+      {% for col in columns %}
+        <div class="week-col {% if col.is_today %}is-today{% endif %}" data-date="{{ col.date|date:'Y-m-d' }}">
+          <div class="week-col-head">
+            <div class="week-col-label">{{ col.label }}</div>
+            <div class="week-col-day">{{ col.day_num }}</div>
+          </div>
+          <div class="week-col-body">
+            {% if col.holiday %}<div class="week-holiday">{{ col.holiday }}</div>{% endif %}
+            {% for t in col.tasks %}
+              <div class="chip chip-task chip-{{ t.category }}{% if t.priority == 'urgent' %} chip-urgent{% endif %}{% if t.completed %} chip-done{% endif %}" data-open-day="{{ col.date|date:'Y-m-d' }}">
+                <span class="chip-time">{{ t.time }}</span>
+                <span class="chip-title">{{ t.title }}</span>
+              </div>
+            {% empty %}
+              {% if not col.holiday %}<div class="week-empty">—</div>{% endif %}
+            {% endfor %}
+          </div>
+        </div>
+      {% endfor %}
     </div>
   </div>
-{% endif %}
 
-{# ---------------- WEEK VIEW ---------------- #}
-{% if view == 'week' %}
-  <div class="week-grid">
-    {% for col in columns %}
-      <div class="week-col {% if col.is_today %}is-today{% endif %}"
-           data-date="{{ col.date|date:'Y-m-d' }}">
-        <div class="week-col-head">
-          <div class="week-col-label">{{ col.label }}</div>
-          <div class="week-col-day">{{ col.day_num }}</div>
-        </div>
-        <div class="week-col-body">
-          {% if col.holiday %}<div class="week-holiday">{{ col.holiday }}</div>{% endif %}
-          {% for t in col.tasks %}
-            <div class="chip chip-task chip-{{ t.category }}{% if t.priority == 'urgent' %} chip-urgent{% endif %}{% if t.completed %} chip-done{% endif %}"
-                 data-open-day="{{ col.date|date:'Y-m-d' }}">
-              <span class="chip-time">{{ t.time }}</span>
-              <span class="chip-title">{{ t.title }}</span>
-            </div>
-          {% empty %}
-            {% if not col.holiday %}<div class="week-empty">—</div>{% endif %}
-          {% endfor %}
-        </div>
-      </div>
-    {% endfor %}
-  </div>
-{% endif %}
-
-{# ---------------- LIST VIEW ---------------- #}
-{% if view == 'list' %}
-  <div class="card">
+  {# ---- list view ---- #}
+  <div class="cal-view" id="cal-list" hidden>
     {% if list_days %}
       {% for day in list_days %}
         <div class="list-day-group">
@@ -95,7 +74,7 @@
             <span class="meta">{{ day.tasks|length }} task{{ day.tasks|length|pluralize }}</span>
           </div>
           {% for t in day.tasks %}
-            <div class="list-row{% if t.completed %} done{% endif %}">
+            <div class="list-row{% if t.completed %} done{% endif %}" data-open-day="{{ day.date|date:'Y-m-d' }}">
               <span class="list-time">{{ t.time }}</span>
               <span class="cat-chip cat-{{ t.category }}">{{ t.categoryLabel }}</span>
               <span class="list-title">{{ t.title }}</span>
@@ -108,26 +87,20 @@
       <div class="empty">Nothing scheduled.</div>
     {% endif %}
   </div>
-{% endif %}
+</div>
 {% endblock %}
 
 {% block scripts %}
-{% if view == 'week' or view == 'list' %}
+  <script src="{% static 'js/calendar.js' %}"></script>
   <script>
   (function () {
-    document.querySelectorAll('.week-col, .list-row').forEach(function (el) {
-      el.addEventListener('click', function (e) {
-        var chip = e.target.closest('[data-open-day]');
-        var iso = chip ? chip.getAttribute('data-open-day') : el.getAttribute('data-date');
-        if (iso && typeof window.HARPR_openDayModal === 'function') {
-          window.HARPR_openDayModal(iso);
-        }
-      });
+    // Delegate clicks on chips and list rows to the day modal.
+    document.addEventListener('click', function (e) {
+      var el = e.target.closest('[data-open-day]');
+      if (el && typeof window.HARPR_openDayModal === 'function') {
+        window.HARPR_openDayModal(el.getAttribute('data-open-day'));
+      }
     });
   })();
   </script>
-{% endif %}
-{% if view == 'month' %}
-  <script src="{% static 'js/calendar.js' %}"></script>
-{% endif %}
 {% endblock %}

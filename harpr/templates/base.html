@@ -40,9 +40,10 @@
           <a href="{% url 'dashboard' %}" class="navlink {% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}">
             <span class="nav-dot"></span> Today
           </a>
-          <a href="{% url 'timeline' %}" class="navlink {% if request.resolver_match.url_name == 'timeline' or request.resolver_match.url_name == 'task_create' or request.resolver_match.url_name == 'task_edit' %}active{% endif %}">
-            <span class="nav-dot"></span> Timeline
-          </a>
+          {# Timeline disabled — its function is now provided by the Calendar and Today pages. #}
+          {#<a href="{% url 'timeline' %}" class="navlink">#}
+          {#  <span class="nav-dot"></span> Timeline#}
+          {#</a>#}
           <a href="{% url 'calendar' %}" class="navlink {% if request.resolver_match.url_name == 'calendar' %}active{% endif %}">
             <span class="nav-dot"></span> Calendar
           </a>
@@ -54,7 +55,7 @@
           </a>
           <a href="{% url 'settings' %}" class="navlink {% if request.resolver_match.url_name == 'settings' %}active{% endif %}">
             <span class="nav-dot"></span> Settings
-            <span class="reminders-pip {% if notifications_enabled %}on{% else %}off{% endif %}" title="{% if notifications_enabled %}Reminders are on{% else %}Reminders are off{% endif %}"></span>
+            <span class="reminders-pip reminders-pip--hint" id="reminders-pip" title="Enable browser notifications" hidden></span>
           </a>
         </nav>
 
@@ -205,9 +206,9 @@
       <a href="{% url 'dashboard' %}" class="mobile-nav-item {% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}">
         <span class="mobile-nav-glyph">◐</span><span>Today</span>
       </a>
-      <a href="{% url 'timeline' %}" class="mobile-nav-item {% if request.resolver_match.url_name == 'timeline' %}active{% endif %}">
-        <span class="mobile-nav-glyph">≡</span><span>Timeline</span>
-      </a>
+      {#<a href="{% url 'timeline' %}" class="mobile-nav-item">#}
+      {#  <span class="mobile-nav-glyph">≡</span><span>Timeline</span>#}
+      {#</a>#}
       <a href="{% url 'calendar' %}" class="mobile-nav-item {% if request.resolver_match.url_name == 'calendar' %}active{% endif %}">
         <span class="mobile-nav-glyph">▦</span><span>Calendar</span>
       </a>
@@ -215,7 +216,7 @@
         <span class="mobile-nav-glyph">⟳</span><span>Activity</span>
       </a>
       <a href="{% url 'settings' %}" class="mobile-nav-item {% if request.resolver_match.url_name == 'settings' %}active{% endif %}">
-        <span class="mobile-nav-glyph">⚙<span class="reminders-pip {% if notifications_enabled %}on{% else %}off{% endif %}"></span></span><span>Settings</span>
+        <span class="mobile-nav-glyph">⚙<span class="reminders-pip reminders-pip--hint" id="reminders-pip-mobile" hidden></span></span><span>Settings</span>
       </a>
     </nav>
   {% else %}
@@ -234,6 +235,37 @@
         document.documentElement.setAttribute('data-theme', next);
         try { localStorage.setItem('cosmos-theme', next); } catch (e) {}
       });
+    })();
+    // Show the reminders hint pip only if the browser hasn't granted
+    // notification permission yet.
+    (function () {
+      var pips = document.querySelectorAll('.reminders-pip--hint');
+      if (!pips.length) return;
+      var granted = ('Notification' in window) && Notification.permission === 'granted';
+      if (!granted) {
+        pips.forEach(function (p) { p.hidden = false; });
+      }
+    })();
+  </script>
+
+  <script>
+    // Show the reminders hint pip only when browser notification
+    // permission has not yet been granted.
+    (function () {
+      if (!('Notification' in window)) return;
+      function sync() {
+        var granted = Notification.permission === 'granted';
+        ['reminders-pip', 'reminders-pip-mobile'].forEach(function (id) {
+          var el = document.getElementById(id);
+          if (el) el.hidden = granted;
+        });
+      }
+      sync();
+      // Re-check whenever permission may have changed (poll every 3s).
+      // Cheap and harmless.
+      setInterval(sync, 3000);
+      // Expose so the settings page can trigger an immediate update.
+      window.HARPR_syncRemindersPip = sync;
     })();
   </script>
 
