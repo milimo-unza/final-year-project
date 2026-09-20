@@ -53,3 +53,11 @@ secrets.json
 # Logs
 *.log
 logs/
+
+# Local backups (post-restructure)
+*.backup
+*.before-overflow
+*.dots-version
+*.dotversion.bak
+*.bak
+harpr-backup-*/
