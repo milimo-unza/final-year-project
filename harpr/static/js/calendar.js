@@ -1,10 +1,7 @@
 /* ============================================================
-   Harpr — calendar
-   Month view: task chips injected directly into day cells
-   via dayCellDidMount (bypassing FullCalendar's event renderer,
-   which kept fighting us). Holidays still use the event system.
-   Week view: default FullCalendar hour grid.
-   List view: default FullCalendar list.
+   Harpr calendar — month view chips, week + list handled server-side.
+   Chips are injected by walking the DOM after the fetch resolves —
+   dayCellDidMount fires too early and doesn't reliably re-fire.
    ============================================================ */
 (function () {
   'use strict';
@@ -12,10 +9,8 @@
   if (!el) return;
 
   var eventsUrl = el.dataset.eventsUrl;
-  var initialView = window.matchMedia('(max-width: 768px)').matches ? 'listMonth' : 'dayGridMonth';
-
   var MAX_CHIPS = 3;
-  var daysMap = {};   // populated from /calendar/events/
+  var daysMap = {};
 
   function pad(n) { return n < 10 ? '0' + n : '' + n; }
   function isoLocal(d) {
@@ -28,29 +23,23 @@
   }
 
   var calendar = new FullCalendar.Calendar(el, {
-    initialView: initialView,
+    initialView: 'dayGridMonth',
     height: 'auto',
-    headerToolbar: false,   // our own toolbar lives in the template
-    firstDay: 1,
+    headerToolbar: false,
+    firstDay: 0,
     nowIndicator: true,
     dayMaxEvents: false,
-    listDayFormat: { weekday: 'long', month: 'short', day: 'numeric' },
-    listDaySideFormat: false,
 
-    // Holidays only — tasks are injected manually below.
     events: function (info, successCallback, failureCallback) {
       fetch(eventsUrl, { credentials: 'same-origin' })
         .then(function (r) { return r.json(); })
         .then(function (data) {
           daysMap = (data && data.days) || {};
           successCallback((data && data.holidays) || []);
-          // Re-render so dayCellDidMount fires with daysMap populated.
-          calendar.render();
         })
         .catch(failureCallback);
     },
 
-    // Holiday chip rendering — stays as a FullCalendar event
     eventContent: function (arg) {
       var props = arg.event.extendedProps || {};
       if (props.holiday) {
@@ -59,29 +48,49 @@
       return true;
     },
 
-    // Inject task chips into the day cell
-    dayCellDidMount: function (arg) {
-      var iso = isoLocal(arg.date);
-      var tasks = daysMap[iso] || [];
+    // After FullCalendar finishes layout, inject our chips via direct DOM walk.
+    datesSet: function () {
+      setTimeout(injectAllChips, 0);
+    },
+    eventsSet: function () {
+      setTimeout(injectAllChips, 0);
+    },
+
+    dateClick: function (info) {
+      var iso = isoLocal(info.date);
+      if (typeof window.HARPR_openDayModal === 'function') {
+        window.HARPR_openDayModal(iso);
+      }
+    },
+    eventClick: function (info) {
+      info.jsEvent.preventDefault();
+      var d = info.event.start;
+      if (!d) return;
+      var iso = isoLocal(d);
+      if (typeof window.HARPR_openDayModal === 'function') {
+        window.HARPR_openDayModal(iso);
+      }
+    }
+  });
+
+  function injectAllChips() {
+    var cells = document.querySelectorAll('#calendar .fc-daygrid-day');
+    cells.forEach(function (cell) {
+      var dateStr = cell.getAttribute('data-date');
+      if (!dateStr) return;
+      var tasks = daysMap[dateStr] || [];
+
+      // Remove any previous stack so we don't double-inject.
+      var existing = cell.querySelector('.harpr-chips');
+      if (existing) existing.remove();
+
       if (!tasks.length) return;
 
-      // The frame is where FC renders the day number + events.
-      var frame = arg.el.querySelector('.fc-daygrid-day-frame');
+      var frame = cell.querySelector('.fc-daygrid-day-frame');
       if (!frame) return;
 
-      // Build (or find) our own stack container under the day number.
-      var stack = frame.querySelector('.harpr-chips');
-      if (!stack) {
-        stack = document.createElement('div');
-        stack.className = 'harpr-chips';
-        // Append after FC's own events container (which we hide via CSS).
-        var eventsBox = frame.querySelector('.fc-daygrid-day-events');
-        if (eventsBox) {
-          eventsBox.appendChild(stack);
-        } else {
-          frame.appendChild(stack);
-        }
-      }
+      var stack = document.createElement('div');
+      stack.className = 'harpr-chips';
 
       var visible = tasks.slice(0, MAX_CHIPS);
       var hidden  = tasks.length - visible.length;
@@ -106,29 +115,17 @@
         more.addEventListener('click', function (e) {
           e.stopPropagation();
           if (typeof window.HARPR_openDayModal === 'function') {
-            window.HARPR_openDayModal(iso);
+            window.HARPR_openDayModal(dateStr);
           }
         });
         stack.appendChild(more);
       }
-    },
 
-    dateClick: function (info) {
-      var iso = isoLocal(info.date);
-      if (typeof window.HARPR_openDayModal === 'function') {
-        window.HARPR_openDayModal(iso);
-      }
-    },
-    eventClick: function (info) {
-      info.jsEvent.preventDefault();
-      var d = info.event.start;
-      if (!d) return;
-      var iso = isoLocal(d);
-      if (typeof window.HARPR_openDayModal === 'function') {
-        window.HARPR_openDayModal(iso);
-      }
-    }
-  });
+      // Append inside the day's events container (or fall back to the frame).
+      var target = frame.querySelector('.fc-daygrid-day-events') || frame;
+      target.appendChild(stack);
+    });
+  }
 
   calendar.render();
 })();
