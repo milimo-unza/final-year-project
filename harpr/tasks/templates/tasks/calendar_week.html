@@ -1,0 +1,73 @@
+{% extends 'base.html' %}
+{% load static %}
+{% load harpr_extras %}
+{% block title %}Calendar · Week · {{ APP_NAME }}{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div class="titles">
+    <h1>Calendar</h1>
+    <div class="meta">{{ month_label }}</div>
+  </div>
+  <div class="row-flex">
+    <a class="btn btn-sm" href="?view=week&start={{ prev_week }}">← Prev</a>
+    <a class="btn btn-sm" href="?view=week">Today</a>
+    <a class="btn btn-sm" href="?view=week&start={{ next_week }}">Next →</a>
+    <a class="btn btn-primary" href="{% url 'task_create' %}" data-modal="task-new">New task</a>
+  </div>
+</div>
+
+<div class="week-toolbar">
+  <a class="view-tab" href="?view=month">Month</a>
+  <a class="view-tab active" href="?view=week">Week</a>
+  <a class="view-tab" href="?view=list">List</a>
+</div>
+
+<div class="week-grid">
+  {% for col in columns %}
+    <div class="week-col {% if col.is_today %}is-today{% endif %}"
+         data-date="{{ col.date|date:'Y-m-d' }}">
+      <div class="week-col-head">
+        <div class="week-col-label">{{ col.label }}</div>
+        <div class="week-col-day">{{ col.day_num }}</div>
+      </div>
+      <div class="week-col-body">
+        {% if col.holiday %}
+          <div class="week-holiday">{{ col.holiday }}</div>
+        {% endif %}
+
+        {% if col.tasks %}
+          {% for t in col.tasks %}
+            <div class="chip chip-task chip-{{ t.category }}{% if t.priority == 'urgent' %} chip-urgent{% endif %}{% if t.completed %} chip-done{% endif %}"
+                 data-open-day="{{ col.date|date:'Y-m-d' }}">
+              <span class="chip-time">{{ t.time }}</span>
+              <span class="chip-title">{{ t.title }}</span>
+            </div>
+          {% endfor %}
+        {% else %}
+          {% if not col.holiday %}
+            <div class="week-empty">—</div>
+          {% endif %}
+        {% endif %}
+      </div>
+    </div>
+  {% endfor %}
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+  document.querySelectorAll('.week-col').forEach(function (col) {
+    col.addEventListener('click', function (e) {
+      var chip = e.target.closest('[data-open-day]');
+      var iso = chip ? chip.getAttribute('data-open-day')
+                     : col.getAttribute('data-date');
+      if (iso && typeof window.HARPR_openDayModal === 'function') {
+        window.HARPR_openDayModal(iso);
+      }
+    });
+  });
+})();
+</script>
+{% endblock %}

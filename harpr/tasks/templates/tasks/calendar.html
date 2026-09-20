@@ -4,48 +4,130 @@
 {% block title %}Calendar · {{ APP_NAME }}{% endblock %}
 
 {% block head_extra %}
-  <link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.15/index.global.min.css" rel="stylesheet" />
-  <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.15/index.global.min.js"></script>
+  {% if view == 'month' %}
+    <link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.15/index.global.min.css" rel="stylesheet" />
+    <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.15/index.global.min.js"></script>
+  {% endif %}
 {% endblock %}
 
 {% block content %}
 <div class="page-head">
   <div class="titles">
     <h1>Calendar</h1>
-    <div class="meta">Tasks plotted on a monthly grid</div>
+    <div class="meta">{{ month_label|default:"Tasks plotted on a grid" }}</div>
   </div>
   <div class="row-flex">
-    <a class="btn btn-primary" href="{% url 'task_create' %}" data-modal="task-new">+ New task</a>
+    <a class="btn btn-primary" href="{% url 'task_create' %}" data-modal="task-new">New task</a>
   </div>
 </div>
 
-<div class="card">
-  <div id="calendar" data-events-url="{% url 'calendar_events' %}"></div>
+{# ---- single, unified toolbar for all three views ---- #}
+<div class="cal-toolbar">
+  <div class="cal-toolbar-nav">
+    <a class="icon-btn" href="?view={{ view }}&start={{ prev_start }}" title="Previous">‹</a>
+    <a class="icon-btn" href="?view={{ view }}&start={{ today_iso }}" title="Today">·</a>
+    <a class="icon-btn" href="?view={{ view }}&start={{ next_start }}" title="Next">›</a>
+  </div>
+  <div class="cal-toolbar-tabs">
+    <a class="view-tab {% if view == 'month' %}active{% endif %}" href="?view=month">Month</a>
+    <a class="view-tab {% if view == 'week'  %}active{% endif %}" href="?view=week">Week</a>
+    <a class="view-tab {% if view == 'list'  %}active{% endif %}" href="?view=list">List</a>
+  </div>
+  <div class="cal-toolbar-label">{{ month_label }}</div>
 </div>
 
-<p class="text-muted" style="font-size:12px; margin-top:8px;">
-  Tip: a coloured dot marks days with tasks. Click any day to see what's scheduled.
-</p>
+{# ---------------- MONTH VIEW ---------------- #}
+{% if view == 'month' %}
+  <div class="card">
+    <div id="calendar" data-events-url="{% url 'calendar_events' %}"></div>
+  </div>
 
-<div class="card mt-4">
-  <div class="card-head"><h2>Legend</h2></div>
-  <div class="row-flex" style="flex-wrap: wrap; gap: 18px; font-size: 12px;">
-    <div class="row-flex"><span class="legend-dot" style="background:{{ urgent_color }};"></span> Urgent (any priority)</div>
-    <div class="row-flex"><span class="legend-dot" style="background:{{ category_colors.work }};"></span> {{ category_labels.work }}</div>
-    <div class="row-flex"><span class="legend-dot" style="background:{{ category_colors.study }};"></span> {{ category_labels.study }}</div>
-    <div class="row-flex"><span class="legend-dot" style="background:{{ category_colors.personal }};"></span> {{ category_labels.personal }}</div>
-    <div class="row-flex"><span class="legend-dot" style="background:{{ category_colors.health }};"></span> {{ category_labels.health }}</div>
-    {% if show_public_holidays %}
-      <div class="row-flex"><span class="legend-dot" style="background:#9ca3af;"></span> Zambian public holiday</div>
+  <div class="card mt-4">
+    <div class="card-head"><h2>Legend</h2></div>
+    <div class="row-flex" style="flex-wrap: wrap; gap: 18px; font-size: 12px;">
+      <div class="row-flex"><span class="legend-dot" style="background:{{ urgent_color }};"></span> Urgent</div>
+      <div class="row-flex"><span class="legend-dot" style="background:{{ category_colors.work }};"></span> {{ category_labels.work }}</div>
+      <div class="row-flex"><span class="legend-dot" style="background:{{ category_colors.study }};"></span> {{ category_labels.study }}</div>
+      <div class="row-flex"><span class="legend-dot" style="background:{{ category_colors.personal }};"></span> {{ category_labels.personal }}</div>
+      <div class="row-flex"><span class="legend-dot" style="background:{{ category_colors.health }};"></span> {{ category_labels.health }}</div>
+      {% if show_public_holidays %}
+        <div class="row-flex"><span class="legend-dot" style="background:#9ca3af;"></span> Public holiday</div>
+      {% endif %}
+    </div>
+  </div>
+{% endif %}
+
+{# ---------------- WEEK VIEW ---------------- #}
+{% if view == 'week' %}
+  <div class="week-grid">
+    {% for col in columns %}
+      <div class="week-col {% if col.is_today %}is-today{% endif %}"
+           data-date="{{ col.date|date:'Y-m-d' }}">
+        <div class="week-col-head">
+          <div class="week-col-label">{{ col.label }}</div>
+          <div class="week-col-day">{{ col.day_num }}</div>
+        </div>
+        <div class="week-col-body">
+          {% if col.holiday %}<div class="week-holiday">{{ col.holiday }}</div>{% endif %}
+          {% for t in col.tasks %}
+            <div class="chip chip-task chip-{{ t.category }}{% if t.priority == 'urgent' %} chip-urgent{% endif %}{% if t.completed %} chip-done{% endif %}"
+                 data-open-day="{{ col.date|date:'Y-m-d' }}">
+              <span class="chip-time">{{ t.time }}</span>
+              <span class="chip-title">{{ t.title }}</span>
+            </div>
+          {% empty %}
+            {% if not col.holiday %}<div class="week-empty">—</div>{% endif %}
+          {% endfor %}
+        </div>
+      </div>
+    {% endfor %}
+  </div>
+{% endif %}
+
+{# ---------------- LIST VIEW ---------------- #}
+{% if view == 'list' %}
+  <div class="card">
+    {% if list_days %}
+      {% for day in list_days %}
+        <div class="list-day-group">
+          <div class="list-day-head">
+            <h3>{{ day.label }}</h3>
+            <span class="meta">{{ day.tasks|length }} task{{ day.tasks|length|pluralize }}</span>
+          </div>
+          {% for t in day.tasks %}
+            <div class="list-row{% if t.completed %} done{% endif %}">
+              <span class="list-time">{{ t.time }}</span>
+              <span class="cat-chip cat-{{ t.category }}">{{ t.categoryLabel }}</span>
+              <span class="list-title">{{ t.title }}</span>
+              <span class="pill {{ t.priority }}">{{ t.priority|title }}</span>
+            </div>
+          {% endfor %}
+        </div>
+      {% endfor %}
+    {% else %}
+      <div class="empty">Nothing scheduled.</div>
     {% endif %}
   </div>
-  <p class="text-muted" style="font-size:11px; margin-top:8px;">
-    Days with multiple tasks show one dot for the highest-precedence item:
-    Urgent &rsaquo; Work &rsaquo; Study &rsaquo; Personal &rsaquo; Health.
-  </p>
-</div>
+{% endif %}
 {% endblock %}
 
 {% block scripts %}
+{% if view == 'week' or view == 'list' %}
+  <script>
+  (function () {
+    document.querySelectorAll('.week-col, .list-row').forEach(function (el) {
+      el.addEventListener('click', function (e) {
+        var chip = e.target.closest('[data-open-day]');
+        var iso = chip ? chip.getAttribute('data-open-day') : el.getAttribute('data-date');
+        if (iso && typeof window.HARPR_openDayModal === 'function') {
+          window.HARPR_openDayModal(iso);
+        }
+      });
+    });
+  })();
+  </script>
+{% endif %}
+{% if view == 'month' %}
   <script src="{% static 'js/calendar.js' %}"></script>
+{% endif %}
 {% endblock %}

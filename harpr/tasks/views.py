@@ -283,7 +283,130 @@ def trash_clear(request):
 
 @login_required
 def calendar(request):
-    return render(request, "tasks/calendar.html")
+    """Single dispatcher for Month / Week / List."""
+    view = (request.GET.get("view") or "month").lower()
+    if view not in ("month", "week", "list"):
+        view = "month"
+
+    today = timezone.localdate()
+    start_param = request.GET.get("start")
+    if start_param:
+        try:
+            anchor = date.fromisoformat(start_param)
+        except ValueError:
+            anchor = today
+    else:
+        anchor = today
+
+    settings_obj = UserSettings.for_user(request.user)
+    cat_labels = settings_obj.category_labels()
+
+    ctx = {
+        "view": view,
+        "today_iso": today.isoformat(),
+        "category_labels": cat_labels,
+        "category_colors": CATEGORY_COLORS,
+        "urgent_color": URGENT_COLOR,
+        "show_public_holidays": settings_obj.show_public_holidays,
+    }
+
+    if view == "week":
+        from datetime import timedelta as _td
+        # Sunday-anchored week (weekday() is 0=Mon; we want 0=Sun)
+        days_since_sunday = (anchor.weekday() + 1) % 7
+        sunday = anchor - _td(days=days_since_sunday)
+        days = [sunday + _td(days=i) for i in range(7)]
+
+        tz = timezone.get_current_timezone()
+        week_start_dt = datetime.combine(days[0], datetime.min.time(), tzinfo=tz)
+        week_end_dt = week_start_dt + _td(days=7)
+
+        qs = (Task.objects
+              .filter(user=request.user, due_date__gte=week_start_dt, due_date__lt=week_end_dt)
+              .order_by("due_date"))
+
+        tasks_by_day = {}
+        for t in qs:
+            local = timezone.localtime(t.due_date)
+            tasks_by_day.setdefault(local.date(), []).append({
+                "id": t.id, "title": t.title, "time": local.strftime("%H:%M"),
+                "category": t.category,
+                "categoryLabel": cat_labels.get(t.category, t.get_category_display()),
+                "priority": t.priority, "completed": t.completed,
+            })
+
+        holidays_by_day = {}
+        if settings_obj.show_public_holidays:
+            for y in {days[0].year, days[-1].year}:
+                for d, name in zambian_holidays(y):
+                    if days[0] <= d <= days[-1]:
+                        holidays_by_day[d] = name
+
+        columns = []
+        for d in days:
+            columns.append({
+                "date": d, "label": d.strftime("%a"), "day_num": d.day,
+                "is_today": d == today, "tasks": tasks_by_day.get(d, []),
+                "holiday": holidays_by_day.get(d),
+            })
+
+        ctx["columns"] = columns
+        ctx["month_label"] = days[3].strftime("%B %Y")
+        ctx["prev_start"] = (days[0] - _td(days=7)).isoformat()
+        ctx["next_start"] = (days[0] + _td(days=7)).isoformat()
+        return render(request, "tasks/calendar.html", ctx)
+
+    if view == "list":
+        # Group by day, next 60 days from anchor.
+        from datetime import timedelta as _td
+        end = anchor + _td(days=60)
+        tz = timezone.get_current_timezone()
+        start_dt = datetime.combine(anchor, datetime.min.time(), tzinfo=tz)
+        end_dt = datetime.combine(end, datetime.min.time(), tzinfo=tz)
+
+        qs = (Task.objects
+              .filter(user=request.user, due_date__gte=start_dt, due_date__lt=end_dt)
+              .order_by("due_date"))
+
+        days_map = {}
+        for t in qs:
+            local = timezone.localtime(t.due_date)
+            days_map.setdefault(local.date(), []).append({
+                "id": t.id, "title": t.title, "time": local.strftime("%H:%M"),
+                "category": t.category,
+                "categoryLabel": cat_labels.get(t.category, t.get_category_display()),
+                "priority": t.priority, "completed": t.completed,
+            })
+
+        def label_for(d):
+            delta = (d - today).days
+            if delta == 0: return "Today"
+            if delta == 1: return "Tomorrow"
+            return d.strftime("%A, %B ") + str(d.day)
+
+        list_days = []
+        for d in sorted(days_map):
+            list_days.append({"date": d, "label": label_for(d), "tasks": days_map[d]})
+
+        ctx["list_days"] = list_days
+        ctx["month_label"] = anchor.strftime("%B %Y")
+        ctx["prev_start"] = (anchor - _td(days=30)).isoformat()
+        ctx["next_start"] = (anchor + _td(days=30)).isoformat()
+        return render(request, "tasks/calendar.html", ctx)
+
+    # Month view
+    import calendar as _cal
+    first = anchor.replace(day=1)
+    last_day = _cal.monthrange(first.year, first.month)[1]
+    last = first.replace(day=last_day)
+    ctx["month_label"] = first.strftime("%B %Y")
+
+    from datetime import timedelta as _td
+    ctx["prev_start"] = (first - _td(days=1)).replace(day=1).isoformat()
+    ctx["next_start"] = (last + _td(days=1)).isoformat()
+
+    return render(request, "tasks/calendar.html", ctx)
+
 
 
 _EASTER = {
@@ -330,36 +453,35 @@ def zambian_holidays(year):
 
 @login_required
 def calendar_events(request):
-    """Return events (holidays) + per-day dot info for the calendar."""
+    """Return holidays (as FullCalendar events) + a per-day map of tasks
+    (as plain JSON the JS can render as chips inside the day cell)."""
     user = request.user
     settings_obj = UserSettings.for_user(user)
+    cat_labels = settings_obj.category_labels()
 
-    qs = Task.objects.filter(user=user, due_date__isnull=False)
-
-    per_day = {}
+    # --- Per-day task map: { "2026-09-20": [ {title, time, category, ...}, ... ] } ---
+    qs = Task.objects.filter(user=user, due_date__isnull=False).order_by("due_date")
+    by_day = {}
     for t in qs:
-        iso = timezone.localtime(t.due_date).date().isoformat()
-        slot = per_day.setdefault(iso, {"urgent": False, "cat_rank": 99, "cat": None})
-        if t.priority == "urgent":
-            slot["urgent"] = True
-        r = Task.CATEGORY_RANK.get(t.category, 99)
-        if r < slot["cat_rank"]:
-            slot["cat_rank"] = r
-            slot["cat"] = t.category
+        local = timezone.localtime(t.due_date)
+        key = local.date().isoformat()
+        by_day.setdefault(key, []).append({
+            "id": t.id,
+            "title": t.title,
+            "time": local.strftime("%H:%M"),
+            "category": t.category,
+            "categoryLabel": cat_labels.get(t.category, t.get_category_display()),
+            "priority": t.priority,
+            "completed": t.completed,
+        })
 
-    dots = {}
-    for d, slot in per_day.items():
-        if slot["urgent"]:
-            dots[d] = {"cls": "dot-urgent", "color": URGENT_COLOR}
-        elif slot["cat"]:
-            dots[d] = {"cls": "dot-" + slot["cat"], "color": CATEGORY_COLORS[slot["cat"]]}
-
-    events = []
+    # --- Holidays as FullCalendar events ---
+    holiday_events = []
     if settings_obj.show_public_holidays:
         today = timezone.localdate()
         for y in {today.year, today.year + 1}:
             for d, name in zambian_holidays(y):
-                events.append({
+                holiday_events.append({
                     "title": name,
                     "start": d.isoformat(),
                     "allDay": True,
@@ -371,7 +493,14 @@ def calendar_events(request):
                     "editable": False,
                     "extendedProps": {"holiday": True},
                 })
-    return JsonResponse({"events": events, "dots": dots})
+
+    return JsonResponse({"days": by_day, "holidays": holiday_event_list(holiday_events)})
+
+
+def holiday_event_list(events):
+    """Small passthrough so the shape is explicit; keeps the door open
+    for future filtering without changing the response shape."""
+    return events
 
 
 
