@@ -47,6 +47,9 @@
           <a href="{% url 'calendar' %}" class="navlink {% if request.resolver_match.url_name == 'calendar' %}active{% endif %}">
             <span class="nav-dot"></span> Calendar
           </a>
+          <a href="{% url 'analytics' %}" class="navlink {% if request.resolver_match.url_name == 'analytics' %}active{% endif %}">
+            <span class="nav-dot"></span> Analytics
+          </a>
           <a href="{% url 'activity_log' %}" class="navlink {% if request.resolver_match.url_name == 'activity_log' %}active{% endif %}">
             <span class="nav-dot"></span> Activity
           </a>

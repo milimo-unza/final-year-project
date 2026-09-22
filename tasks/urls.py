@@ -41,6 +41,9 @@ urlpatterns = [
     # Reminders
     path("reminders/due/", views.reminders_due, name="reminders_due"),
 
+    # Analytics
+    path("analytics/", views.analytics, name="analytics"),
+
     # Settings & activity log
     path("settings/", views.settings_view, name="settings"),
     path("activity-log/", views.activity_log_view, name="activity_log"),
