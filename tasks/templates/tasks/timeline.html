@@ -32,7 +32,7 @@
 
           {% if g.tasks %}
             {% for t in g.tasks %}
-              <div class="task-row {% if t.completed %}done{% endif %} {% if t.priority == 'urgent' %}urgent-row{% endif %}"
+              <div class="task-row {% if t.completed %}done{% endif %} "
                    data-task-id="{{ t.pk }}">
                 <form method="post" action="{% url 'task_toggle' t.pk %}" class="task-form-toggle" data-ajax-toggle>
                   {% csrf_token %}
@@ -54,7 +54,7 @@
                 </div>
                 <div class="row-flex">
                   <span class="pill {{ t.priority }}">{{ t.get_priority_display }}</span>
-                  <a class="btn btn-sm btn-ghost" href="{% url 'log_time' t.pk %}">Log time</a>
+                  <a class="btn btn-sm btn-ghost" href="{% url 'log_time' t.pk %}" data-logtime-task="{{ t.pk }}">Log time</a>
                   <a class="btn btn-sm btn-ghost" href="{% url 'task_edit' t.pk %}" data-modal="task-edit">Edit</a>
                   <button type="button" class="btn btn-sm btn-ghost"
                           data-delete-task="{% url 'task_delete' t.pk %}"

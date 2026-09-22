@@ -84,7 +84,6 @@
       visible.forEach(function (t) {
         var chip = document.createElement('div');
         var cls = ['chip', 'chip-task', 'chip-' + (t.category || 'work')];
-        if (t.priority === 'urgent') cls.push('chip-urgent');
         if (t.completed) cls.push('chip-done');
         chip.className = cls.join(' ');
         chip.innerHTML = '<span class="chip-time">' + esc(t.time || '') + '</span>' +

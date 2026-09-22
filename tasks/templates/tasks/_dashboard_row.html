@@ -1,5 +1,5 @@
 {% load harpr_extras %}
-<div class="task-row {% if t.priority == 'urgent' %}urgent-row{% endif %}"
+<div class="task-row "
      data-task-id="{{ t.pk }}"
      data-section="{{ section }}"
      data-remove-on-complete="1">
@@ -19,7 +19,7 @@
     </div>
   </div>
   <div class="row-flex">
-    <a class="btn btn-sm btn-ghost" href="{% url 'log_time' t.pk %}">Log time</a>
+    <a class="btn btn-sm btn-ghost" href="{% url 'log_time' t.pk %}" data-logtime-task="{{ t.pk }}">Log time</a>
     <span class="pill {{ t.priority }}">{{ t.get_priority_display }}</span>
   </div>
 </div>

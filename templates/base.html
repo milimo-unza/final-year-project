@@ -33,6 +33,7 @@
           <div class="brand-mark" aria-hidden="true"><img src="{% static 'favicon.svg' %}" alt="" width="20" height="20"></div>
           <div class="brand-text">
             <div class="brand-name">{{ APP_NAME }}</div>
+            <div class="brand-tagline">{{ APP_TAGLINE }}</div>
           </div>
         </div>
 
@@ -40,10 +41,9 @@
           <a href="{% url 'dashboard' %}" class="navlink {% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}">
             <span class="nav-dot"></span> Today
           </a>
-          {# Timeline disabled — its function is now provided by the Calendar and Today pages. #}
-          {#<a href="{% url 'timeline' %}" class="navlink">#}
-          {#  <span class="nav-dot"></span> Timeline#}
-          {#</a>#}
+          <a href="{% url 'timeline' %}" class="navlink {% if request.resolver_match.url_name == 'timeline' or request.resolver_match.url_name == 'task_create' or request.resolver_match.url_name == 'task_edit' %}active{% endif %}">
+            <span class="nav-dot"></span> Timeline
+          </a>
           <a href="{% url 'calendar' %}" class="navlink {% if request.resolver_match.url_name == 'calendar' %}active{% endif %}">
             <span class="nav-dot"></span> Calendar
           </a>
@@ -53,14 +53,7 @@
           <a href="{% url 'activity_log' %}" class="navlink {% if request.resolver_match.url_name == 'activity_log' %}active{% endif %}">
             <span class="nav-dot"></span> Activity
           </a>
-          <a href="{% url 'trash_list' %}" class="navlink {% if request.resolver_match.url_name == 'trash_list' %}active{% endif %}">
-            <span class="nav-dot"></span> Trash
-          </a>
-          <a href="{% url 'settings' %}" class="navlink {% if request.resolver_match.url_name == 'settings' %}active{% endif %}">
-            <span class="nav-dot"></span> Settings
-            <span class="reminders-pip reminders-pip--hint" id="reminders-pip" title="Enable browser notifications" hidden></span>
-          </a>
-        </nav>
+</nav>
 
         <div class="sidebar-footer">
           <div class="user-chip">
@@ -75,7 +68,6 @@
               <span class="theme-icon-light">☀</span>
               <span class="theme-icon-dark">☾</span>
             </button>
-            <button id="shortcuts-help" class="icon-btn" type="button" title="Keyboard shortcuts" aria-label="Keyboard shortcuts">?</button>
             <form method="post" action="{% url 'logout' %}" style="margin:0;">
               {% csrf_token %}
               <button type="submit" class="icon-btn" title="Sign out" aria-label="Sign out">⏻</button>
@@ -111,17 +103,17 @@
     <div class="modal-backdrop" id="delete-modal" hidden>
       <div class="modal" role="dialog" aria-modal="true" aria-labelledby="delete-modal-title" style="max-width:440px;">
         <div class="modal-head">
-          <h2 id="delete-modal-title">Move to trash?</h2>
+          <h2 id="delete-modal-title">Delete task?</h2>
           <button type="button" class="icon-btn modal-close" aria-label="Close">✕</button>
         </div>
         <div class="modal-body">
-          <p class="delete-modal-text">Move <strong id="delete-modal-task-title">this task</strong> to the trash? You can restore it later from the Trash page.</p>
+          <p class="delete-modal-text">Delete <strong id="delete-modal-task-title">this task</strong>? This cannot be undone.</p>
           <form method="post" id="delete-modal-form" class="form-actions" action="">
             {% csrf_token %}
             <input type="hidden" name="next" id="delete-modal-next" value="">
             <button type="button" class="btn btn-ghost modal-close">Cancel</button>
             <span class="spacer"></span>
-            <button type="submit" class="btn btn-danger">Move to trash</button>
+            <button type="submit" class="btn btn-danger">Delete</button>
           </form>
         </div>
       </div>
@@ -140,65 +132,15 @@
       </div>
     </div>
 
-    <!-- Modal: pomodoro length -->
-    <div class="modal-backdrop" id="pomo-settings-modal" hidden>
-      <div class="modal" role="dialog" aria-modal="true" aria-labelledby="pomo-settings-title" style="max-width:380px;">
+    <!-- Modal: log time -->
+    <div class="modal-backdrop" id="logtime-modal" hidden>
+      <div class="modal" role="dialog" aria-modal="true" aria-labelledby="logtime-modal-title" style="max-width:440px;">
         <div class="modal-head">
-          <h2 id="pomo-settings-title">Timer length</h2>
-          <button type="button" class="icon-btn modal-close" aria-label="Close">✕</button>
+          <h2 id="logtime-modal-title">Log time</h2>
+          <button type="button" class="icon-btn modal-close" aria-label="Close">X</button>
         </div>
-        <div class="modal-body">
-          <form id="pomo-settings-form" class="form-grid" onsubmit="return false;">
-            <div class="form-row">
-              <label for="pomo-minutes-input">Minutes (1 – 180)</label>
-              <input type="number" id="pomo-minutes-input" min="1" max="180" step="1" value="25">
-              <div class="helptext" id="pomo-pretty-hint"></div>
-            </div>
-            <div class="form-actions">
-              <button type="button" class="btn btn-ghost modal-close">Cancel</button>
-              <span class="spacer"></span>
-              <button type="button" class="btn btn-primary" id="pomo-save-btn">Save</button>
-            </div>
-          </form>
-        </div>
-      </div>
-    </div>
-
-    <!-- Modal: pomodoro reset confirm -->
-    <div class="modal-backdrop" id="pomo-reset-modal" hidden>
-      <div class="modal" role="dialog" aria-modal="true" aria-labelledby="pomo-reset-title" style="max-width:400px;">
-        <div class="modal-head">
-          <h2 id="pomo-reset-title">Reset timer?</h2>
-          <button type="button" class="icon-btn modal-close" aria-label="Close">✕</button>
-        </div>
-        <div class="modal-body">
-          <p style="font-size:1rem; margin: 0 0 20px;">Your progress will be lost.</p>
-          <div class="form-actions">
-            <button type="button" class="btn btn-ghost modal-close">Cancel</button>
-            <span class="spacer"></span>
-            <button type="button" class="btn btn-danger" id="pomo-reset-confirm-btn">Reset</button>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Modal: shortcuts -->
-    <div class="modal-backdrop" id="shortcuts-modal" hidden>
-      <div class="modal" role="dialog" aria-modal="true" aria-labelledby="shortcuts-modal-title">
-        <div class="modal-head">
-          <h2 id="shortcuts-modal-title">Keyboard shortcuts</h2>
-          <button type="button" class="icon-btn modal-close" aria-label="Close">✕</button>
-        </div>
-        <div class="modal-body">
-          <table class="shortcuts-table">
-            <tr><td><kbd>N</kbd></td><td>New task</td></tr>
-            <tr><td><kbd>T</kbd></td><td>Timeline</td></tr>
-            <tr><td><kbd>C</kbd></td><td>Calendar</td></tr>
-            <tr><td><kbd>D</kbd></td><td>Today</td></tr>
-            <tr><td><kbd>A</kbd></td><td>Activity</td></tr>
-            <tr><td><kbd>?</kbd></td><td>This help</td></tr>
-            <tr><td><kbd>Esc</kbd></td><td>Close modal</td></tr>
-          </table>
+        <div class="modal-body" id="logtime-modal-body">
+          <div class="modal-loading">Loading...</div>
         </div>
       </div>
     </div>
@@ -209,19 +151,16 @@
       <a href="{% url 'dashboard' %}" class="mobile-nav-item {% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}">
         <span class="mobile-nav-glyph">◐</span><span>Today</span>
       </a>
-      {#<a href="{% url 'timeline' %}" class="mobile-nav-item">#}
-      {#  <span class="mobile-nav-glyph">≡</span><span>Timeline</span>#}
-      {#</a>#}
+      <a href="{% url 'timeline' %}" class="mobile-nav-item {% if request.resolver_match.url_name == 'timeline' %}active{% endif %}">
+        <span class="mobile-nav-glyph">≡</span><span>Timeline</span>
+      </a>
       <a href="{% url 'calendar' %}" class="mobile-nav-item {% if request.resolver_match.url_name == 'calendar' %}active{% endif %}">
         <span class="mobile-nav-glyph">▦</span><span>Calendar</span>
       </a>
       <a href="{% url 'activity_log' %}" class="mobile-nav-item {% if request.resolver_match.url_name == 'activity_log' %}active{% endif %}">
         <span class="mobile-nav-glyph">⟳</span><span>Activity</span>
       </a>
-      <a href="{% url 'settings' %}" class="mobile-nav-item {% if request.resolver_match.url_name == 'settings' %}active{% endif %}">
-        <span class="mobile-nav-glyph">⚙<span class="reminders-pip reminders-pip--hint" id="reminders-pip-mobile" hidden></span></span><span>Settings</span>
-      </a>
-    </nav>
+</nav>
   {% else %}
     <main class="auth-shell">
       {% block auth_content %}{% endblock %}
@@ -239,37 +178,6 @@
         try { localStorage.setItem('cosmos-theme', next); } catch (e) {}
       });
     })();
-    // Show the reminders hint pip only if the browser hasn't granted
-    // notification permission yet.
-    (function () {
-      var pips = document.querySelectorAll('.reminders-pip--hint');
-      if (!pips.length) return;
-      var granted = ('Notification' in window) && Notification.permission === 'granted';
-      if (!granted) {
-        pips.forEach(function (p) { p.hidden = false; });
-      }
-    })();
-  </script>
-
-  <script>
-    // Show the reminders hint pip only when browser notification
-    // permission has not yet been granted.
-    (function () {
-      if (!('Notification' in window)) return;
-      function sync() {
-        var granted = Notification.permission === 'granted';
-        ['reminders-pip', 'reminders-pip-mobile'].forEach(function (id) {
-          var el = document.getElementById(id);
-          if (el) el.hidden = granted;
-        });
-      }
-      sync();
-      // Re-check whenever permission may have changed (poll every 3s).
-      // Cheap and harmless.
-      setInterval(sync, 3000);
-      // Expose so the settings page can trigger an immediate update.
-      window.HARPR_syncRemindersPip = sync;
-    })();
   </script>
 
   {% if user.is_authenticated %}
@@ -280,13 +188,8 @@
           timeline: "{% url 'timeline' %}",
           calendar: "{% url 'calendar' %}",
           dashboard: "{% url 'dashboard' %}",
-          activityLog: "{% url 'activity_log' %}",
-          remindersDue: "{% url 'reminders_due' %}",
-          calendarDayBase: "/calendar/day/"
-        },
-        notificationsEnabled: {{ notifications_enabled|yesno:"true,false" }},
-        pomodoroSoundEnabled: {{ pomodoro_sound_enabled|yesno:"true,false" }},
-        pomodoroNotificationEnabled: {{ pomodoro_notification_enabled|yesno:"true,false" }}
+          activityLog: "{% url 'activity_log' %}"
+        }
       };
     </script>
     <script src="{% static 'js/harpr.js' %}"></script>

@@ -51,7 +51,7 @@
           <div class="week-col-body">
             {% if col.holiday %}<div class="week-holiday">{{ col.holiday }}</div>{% endif %}
             {% for t in col.tasks %}
-              <div class="chip chip-task chip-{{ t.category }}{% if t.priority == 'urgent' %} chip-urgent{% endif %}{% if t.completed %} chip-done{% endif %}" data-open-day="{{ col.date|date:'Y-m-d' }}">
+              <div class="chip chip-task chip-{{ t.category }}{% if t.completed %} chip-done{% endif %}" data-open-day="{{ col.date|date:'Y-m-d' }}">
                 <span class="chip-time">{{ t.time }}</span>
                 <span class="chip-title">{{ t.title }}</span>
               </div>

@@ -1,10 +1,9 @@
 /* ============================================================
    Harpr — global UI behaviour
    - Toast notifications
-   - Modal popups (task create/edit, delete confirm, day-tasks, pomodoro)
+   - Modal popups (task create/edit, delete confirm, day-tasks)
    - Keyboard shortcuts
    - Browser notifications + reminder polling
-   - Pomodoro complete sound + notification (respect Settings toggles)
    - Natural-language date parser (regex — chrono-free)
    - Default-task-value autofill (today + 2hrs rounded to 30min, remind 5)
    - AJAX task-toggle (no page reload)
@@ -258,7 +257,7 @@
         headers: { 'X-Requested-With': 'XMLHttpRequest' }
       })
         .then(function () {
-          queueToast('Task moved to trash', 'info');
+          queueToast('Task deleted', 'info');
           window.location.reload();
         })
         .catch(function () { window.location.reload(); });
@@ -360,8 +359,7 @@
           return;
         }
         data.tasks.forEach(function (t) {
-          var urgentCls = t.priority_key === 'urgent' ? ' urgent-row' : '';
-          html += '<div class="day-modal-task ' + (t.completed ? 'done' : '') + urgentCls + '">'
+          html += '<div class="day-modal-task ' + (t.completed ? 'done' : '') + '">'
                 +   '<form method="post" action="' + t.toggle_url + '" class="task-form-toggle" data-ajax-toggle>'
                 +     '<input type="hidden" name="csrfmiddlewaretoken" value="' + getCSRFToken() + '">'
                 +     '<input type="hidden" name="next" value="' + window.location.pathname + '">'
@@ -382,155 +380,6 @@
         body.innerHTML = '<div class="empty">Could not load tasks.</div>';
       });
   };
-
-  // ---------- keyboard shortcuts -------------------------------------------
-
-  function isTyping(t) {
-    if (!t) return false;
-    var tag = (t.tagName || '').toLowerCase();
-    if (tag === 'input' || tag === 'textarea' || tag === 'select') return true;
-    if (t.isContentEditable) return true;
-    return false;
-  }
-
-  document.addEventListener('keydown', function (e) {
-    if (e.key === 'Escape') {
-      if (closeTopModal()) e.preventDefault();
-      return;
-    }
-    if (e.metaKey || e.ctrlKey || e.altKey) return;
-    if (isTyping(e.target)) return;
-
-    var k = e.key.toLowerCase();
-    switch (k) {
-      case 'n':
-        e.preventDefault();
-        loadFormIntoModal('task-modal', 'task-modal-body', URLS.taskCreate, { successToast: 'Task added' });
-        var t = document.getElementById('task-modal-title');
-        if (t) t.textContent = 'New task';
-        break;
-      case 't': e.preventDefault(); window.location.href = URLS.timeline; break;
-      case 'c': e.preventDefault(); window.location.href = URLS.calendar; break;
-      case 'd': e.preventDefault(); window.location.href = URLS.dashboard; break;
-      case 'a': if (URLS.activityLog) { e.preventDefault(); window.location.href = URLS.activityLog; } break;
-      case '?': e.preventDefault(); openModal('shortcuts-modal'); break;
-    }
-  });
-
-  var helpBtn = document.getElementById('shortcuts-help');
-  if (helpBtn) {
-    helpBtn.addEventListener('click', function () { openModal('shortcuts-modal'); });
-  }
-
-  // ---------- browser notifications + reminders ----------------------------
-
-  function ensureNotificationPermission() {
-    if (!('Notification' in window)) return Promise.resolve('unsupported');
-    if (Notification.permission === 'granted') return Promise.resolve('granted');
-    if (Notification.permission === 'denied') return Promise.resolve('denied');
-    return Notification.requestPermission();
-  }
-
-  var firedReminders = (function () {
-    try { return JSON.parse(sessionStorage.getItem('harpr-fired-reminders') || '{}'); }
-    catch (e) { return {}; }
-  })();
-  function recordFired(key) {
-    firedReminders[key] = Date.now();
-    try { sessionStorage.setItem('harpr-fired-reminders', JSON.stringify(firedReminders)); } catch (e) {}
-  }
-  function checkReminders() {
-    if (!H.notificationsEnabled) return;
-    if (!('Notification' in window) || Notification.permission !== 'granted') return;
-    if (!URLS.remindersDue) return;
-    fetch(URLS.remindersDue, { credentials: 'same-origin' })
-      .then(function (r) { return r.json(); })
-      .then(function (data) {
-        (data.reminders || []).forEach(function (rem) {
-          var key = 'task-' + rem.id + '-due-' + rem.due;
-          if (firedReminders[key]) return;
-          try {
-            new Notification('Harpr — ' + rem.title, {
-              body: 'Due at ' + rem.due, tag: key, icon: '/static/favicon.svg'
-            });
-            recordFired(key);
-          } catch (err) {}
-        });
-      })
-      .catch(function () {});
-  }
-  if (H.notificationsEnabled && 'Notification' in window) {
-    if (Notification.permission === 'default') {
-      var asked = false;
-      var ask = function () {
-        if (asked) return;
-        asked = true;
-        ensureNotificationPermission();
-        document.removeEventListener('click', ask);
-        document.removeEventListener('keydown', ask);
-      };
-      document.addEventListener('click', ask);
-      document.addEventListener('keydown', ask);
-    }
-    setInterval(checkReminders, 60 * 1000);
-    setTimeout(checkReminders, 5000);
-  }
-
-  // ---------- pomodoro completion sound + notification ---------------------
-
-  function beep() {
-    // Try the harp sample first (static/audio/harpr.m4a). If it fails
-    // for any reason — missing file, browser blocks autoplay, codec
-    // not supported — fall back to a synthetic two-tone beep.
-    try {
-      var audio = new Audio('/static/audio/harpr.m4a');
-      audio.volume = 0.6;
-      var p = audio.play();
-      if (p && p.catch) {
-        p.catch(function () { syntheticBeep(); });
-      }
-      return;
-    } catch (e) {
-      syntheticBeep();
-    }
-  }
-
-  function syntheticBeep() {
-    try {
-      var ctx = new (window.AudioContext || window.webkitAudioContext)();
-      var o = ctx.createOscillator();
-      var g = ctx.createGain();
-      o.connect(g); g.connect(ctx.destination);
-      o.type = 'sine'; o.frequency.value = 880; g.gain.value = 0.05;
-      o.start();
-      setTimeout(function () { o.stop(); ctx.close(); }, 600);
-      setTimeout(function () {
-        try {
-          var ctx2 = new (window.AudioContext || window.webkitAudioContext)();
-          var o2 = ctx2.createOscillator();
-          var g2 = ctx2.createGain();
-          o2.connect(g2); g2.connect(ctx2.destination);
-          o2.type = 'sine'; o2.frequency.value = 660; g2.gain.value = 0.05;
-          o2.start();
-          setTimeout(function () { o2.stop(); ctx2.close(); }, 500);
-        } catch (e) {}
-      }, 700);
-    } catch (e) {}
-  }
-
-  function pomodoroComplete() {
-    if (H.pomodoroSoundEnabled !== false) beep();
-    if (H.pomodoroNotificationEnabled !== false) {
-      if ('Notification' in window && Notification.permission === 'granted') {
-        try {
-          new Notification('Harpr — Pomodoro complete!', {
-            body: 'Time for a break.', icon: '/static/favicon.svg', tag: 'pomo-' + Date.now()
-          });
-        } catch (e) {}
-      }
-    }
-    toast('Pomodoro complete! Time for a break.', 'success');
-  }
 
   // ---------- natural-language date parser (regex; no chrono) -------------
 
@@ -581,9 +430,9 @@
         matchedText = 'next ' + wd[1];
       }
     }
-    // this <weekday> / on <weekday>
+    // this <weekday> / on <weekday> / bare <weekday>
     if (!date) {
-      var wd2 = lower.match(/\b(?:on|this)\s+(sunday|monday|tuesday|wednesday|thursday|friday|saturday)\b/);
+      var wd2 = lower.match(/\b(?:on|this)?\s*(sunday|monday|tuesday|wednesday|thursday|friday|saturday)\b/);
       if (wd2) {
         var t2 = WEEKDAYS.indexOf(wd2[1]);
         var diff2 = (t2 - now.getDay() + 7) % 7;
@@ -641,7 +490,7 @@
     if (hour !== null) {
       date.setHours(hour, minute, 0, 0);
     } else {
-      date.setHours(17, 0, 0, 0); // default 5pm
+      date.setHours(9, 0, 0, 0); // default 9am
     }
     return { date: date, text: matchedText + timeText };
   }
@@ -729,11 +578,112 @@
     }
   }
 
+  // ---------- quick add on Today -------------------------------------------
+
+  (function () {
+    var input = document.getElementById('quick-add-input');
+    var btn = document.getElementById('quick-add-btn');
+    if (!input || !btn) return;
+
+    function submit() {
+      var raw = (input.value || '').trim();
+      if (!raw) return;
+
+      var due = null;
+      try {
+        var parsed = window.HARPR.parseNaturalDate ? window.HARPR.parseNaturalDate(raw) : null;
+        if (parsed && parsed.date) {
+          var d = parsed.date;
+          var pad = function (n) { return n < 10 ? '0' + n : '' + n; };
+          due = d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate())
+              + 'T' + pad(d.getHours()) + ':' + pad(d.getMinutes());
+        }
+      } catch (e) { due = null; }
+
+      var data = new FormData();
+      data.append('title', raw);
+      if (due) data.append('due_date', due);
+      data.append('category', 'work');
+      data.append('csrfmiddlewaretoken', getCSRFToken());
+
+      btn.disabled = true;
+      fetch('/tasks/quick-add/', {
+        method: 'POST',
+        body: data,
+        credentials: 'same-origin',
+        headers: { 'X-Requested-With': 'XMLHttpRequest' }
+      })
+        .then(function (r) { return r.json(); })
+        .then(function (resp) {
+          btn.disabled = false;
+          if (resp && resp.ok) {
+            try { sessionStorage.setItem('harpr-pending-toasts', JSON.stringify([{ message: 'Task added', kind: 'success' }])); } catch (e) {}
+            window.location.reload();
+          }
+        })
+        .catch(function () { btn.disabled = false; });
+    }
+
+    btn.addEventListener('click', submit);
+    input.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter') { e.preventDefault(); submit(); }
+    });
+  })();
+
+
+  // ---------- log-time modal ----------------------------------------------
+
+  document.addEventListener('click', function (e) {
+    var link = e.target.closest('[data-logtime-task]');
+    if (!link) return;
+    e.preventDefault();
+    var url = link.getAttribute('href');
+
+    var body = document.getElementById('logtime-modal-body');
+    if (!body) return;
+    body.innerHTML = '<div class="modal-loading">Loading...</div>';
+    openModal('logtime-modal');
+
+    fetch(url, { credentials: 'same-origin', headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+      .then(function (r) { return r.text(); })
+      .then(function (html) {
+        var temp = document.createElement('div');
+        temp.innerHTML = html;
+        var form = temp.querySelector('form.form-grid') || temp.querySelector('form');
+        if (form) {
+          body.innerHTML = '';
+          body.appendChild(form);
+          // Also grab the descriptive paragraph if present
+          var desc = temp.querySelector('.card > p');
+          if (desc) body.insertBefore(desc, body.firstChild);
+
+          form.addEventListener('submit', function (ev) {
+            ev.preventDefault();
+            var data = new FormData(form);
+            fetch(form.action || window.location.pathname, {
+              method: 'POST', body: data, credentials: 'same-origin',
+              headers: { 'X-Requested-With': 'XMLHttpRequest' },
+            })
+              .then(function (r) {
+                try { sessionStorage.setItem('harpr-pending-toasts', JSON.stringify([{ message: 'Time logged', kind: 'success' }])); } catch (err) {}
+                window.location.reload();
+              })
+              .catch(function () { window.location.reload(); });
+          });
+        } else {
+          body.innerHTML = '<div class="empty">Could not load form.</div>';
+        }
+      })
+      .catch(function () {
+        body.innerHTML = '<div class="empty">Could not load form.</div>';
+      });
+  });
+
+
   // ---------- expose -------------------------------------------------------
 
   window.HARPR.toast = toast;
   window.HARPR.openModal = openModal;
   window.HARPR.closeModal = closeModal;
-  window.HARPR.pomodoroComplete = pomodoroComplete;
   window.HARPR.parseNaturalDate = parseNaturalDate;
 })();

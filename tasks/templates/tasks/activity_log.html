@@ -17,9 +17,6 @@
           <span class="activity-time mono">{{ e.created_at|date:"D, M j · H:i" }}</span>
           <span class="activity-action act-{{ e.action }}">{{ e.get_action_display }}</span>
           <span class="activity-task">{{ e.task_title }}</span>
-          {% if e.action == 'deleted' and e.task_id and e.task and e.task.is_deleted %}
-            <a class="activity-undo" href="{% url 'trash_list' %}">Undo (Trash)</a>
-          {% endif %}
         </li>
       {% endfor %}
     </ul>

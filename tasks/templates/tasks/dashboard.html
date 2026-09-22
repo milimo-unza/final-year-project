@@ -13,6 +13,16 @@
   </div>
 </div>
 
+<div class="quick-add">
+  <input
+    type="text"
+    id="quick-add-input"
+    placeholder="Add a task... (try 'Pay rent tomorrow' or 'Meeting Friday 3pm')"
+    autocomplete="off"
+  >
+  <button type="button" class="btn btn-primary" id="quick-add-btn">Add</button>
+</div>
+
 <div class="two-col">
 
   {# ---------------- LEFT: task sections ---------------- #}
@@ -107,7 +117,7 @@
 
   </div>
 
-  {# ---------------- RIGHT: Pending, Pomodoro, Recently completed ---------------- #}
+  {# ---------------- RIGHT: Pending, Recently completed ---------------- #}
   <div class="side-rail">
 
     <div class="card">
@@ -115,22 +125,6 @@
       <div class="stat-block">
         <div class="stat-value" data-pending-kpi>{{ pending_count }}</div>
         <div class="stat-sub">open tasks in total</div>
-      </div>
-    </div>
-
-    <div class="card">
-      <div class="card-head">
-        <h2>Focus timer</h2>
-        <button type="button" class="pomodoro-settings-btn" id="pomo-settings-btn">Settings</button>
-      </div>
-      <div class="pomodoro" id="pomodoro">
-        <div class="pomodoro-display" id="pomo-display">25:00</div>
-        <div class="pomodoro-sub" id="pomo-sub">25 min</div>
-        <div class="pomodoro-actions">
-          <button type="button" class="btn btn-primary btn-sm" id="pomo-start">Start</button>
-          <button type="button" class="btn btn-sm" id="pomo-pause">Pause</button>
-          <button type="button" class="btn btn-sm" id="pomo-reset">Reset</button>
-        </div>
       </div>
     </div>
 
@@ -159,116 +153,4 @@
 </div>
 {% endblock %}
 
-{% block scripts %}
-<script>
-(function () {
-  var STORAGE_KEY = 'harpr-pomo-minutes';
-  var minutes = parseInt(localStorage.getItem(STORAGE_KEY) || '25', 10);
-  if (isNaN(minutes) || minutes < 1) minutes = 25;
-  if (minutes > 180) minutes = 180;
 
-  var remaining = minutes * 60;
-  var ticking = null;
-
-  var disp = document.getElementById('pomo-display');
-  var sub  = document.getElementById('pomo-sub');
-  var startBtn = document.getElementById('pomo-start');
-  var pauseBtn = document.getElementById('pomo-pause');
-  var resetBtn = document.getElementById('pomo-reset');
-  var settingsBtn = document.getElementById('pomo-settings-btn');
-  var minutesInput = document.getElementById('pomo-minutes-input');
-  var prettyHint = document.getElementById('pomo-pretty-hint');
-  var saveBtn = document.getElementById('pomo-save-btn');
-  if (!disp) return;
-
-  function fmt(s) {
-    var m = Math.floor(s / 60), sec = s % 60;
-    return (m < 10 ? '0' + m : m) + ':' + (sec < 10 ? '0' + sec : sec);
-  }
-
-  function pretty(min) {
-    if (min < 60) return min + ' min';
-    var hr = Math.floor(min / 60), rem = min % 60;
-    if (rem === 0) return hr + ' hr';
-    return hr + ' hr ' + rem + ' min';
-  }
-
-  function render() {
-    disp.textContent = fmt(remaining);
-    if (sub) sub.textContent = pretty(minutes);
-  }
-
-  function tick() {
-    if (remaining > 0) { remaining -= 1; render(); }
-    if (remaining <= 0) {
-      clearInterval(ticking); ticking = null;
-      if (window.HARPR && window.HARPR.pomodoroComplete) {
-        window.HARPR.pomodoroComplete();
-      }
-    }
-  }
-
-  function start() { if (!ticking) ticking = setInterval(tick, 1000); }
-  function pause() { if (ticking) { clearInterval(ticking); ticking = null; } }
-  function reset() { pause(); remaining = minutes * 60; render(); }
-
-  startBtn.addEventListener('click', start);
-  pauseBtn.addEventListener('click', pause);
-
-  resetBtn.addEventListener('click', function () {
-    if (window.HARPR && window.HARPR.openModal) {
-      window.HARPR.openModal('pomo-reset-modal');
-      var doReset = document.getElementById('pomo-reset-confirm-btn');
-      if (doReset) {
-        doReset.onclick = function () {
-          reset();
-          window.HARPR.closeModal(document.getElementById('pomo-reset-modal'));
-        };
-      }
-    } else {
-      reset();
-    }
-  });
-
-  function showHint() {
-    if (!minutesInput || !prettyHint) return;
-    var v = parseInt(minutesInput.value, 10);
-    if (isNaN(v) || v < 1 || v > 180) {
-      prettyHint.textContent = 'Enter 1 to 180.';
-      return;
-    }
-    if (v < 60) prettyHint.textContent = v + ' min';
-    else {
-      var hr = Math.floor(v / 60), rem = v % 60;
-      prettyHint.textContent = (rem === 0) ? (hr + ' hr') : (hr + ' hr ' + rem + ' min');
-    }
-  }
-
-  if (settingsBtn) {
-    settingsBtn.addEventListener('click', function () {
-      if (minutesInput) minutesInput.value = minutes;
-      showHint();
-      if (window.HARPR && window.HARPR.openModal) window.HARPR.openModal('pomo-settings-modal');
-    });
-  }
-  if (minutesInput) minutesInput.addEventListener('input', showHint);
-  if (saveBtn) {
-    saveBtn.addEventListener('click', function () {
-      var v = parseInt(minutesInput.value, 10);
-      if (isNaN(v) || v < 1 || v > 180) {
-        if (window.HARPR && window.HARPR.toast) window.HARPR.toast('Pick a number from 1 to 180.', 'error');
-        return;
-      }
-      minutes = v;
-      localStorage.setItem(STORAGE_KEY, String(minutes));
-      reset();
-      if (window.HARPR && window.HARPR.closeModal) {
-        window.HARPR.closeModal(document.getElementById('pomo-settings-modal'));
-      }
-    });
-  }
-
-  render();
-})();
-</script>
-{% endblock %}

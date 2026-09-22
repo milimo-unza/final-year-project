@@ -1990,7 +1990,7 @@ form p .helptext, form p ul { font-size: 0.74rem; color: var(--muted-fg); margin
    ============================================================ */
 
 /* Reduce the base type scale from 140% back to something human */
-html { font-size: 118% !important; }
+html { font-size: 130% !important; }
 
 /* Auth card brand tagline: lowercase, sans-serif, quiet */
 .auth-card .brand-sub {
@@ -2058,3 +2058,56 @@ html { font-size: 118% !important; }
 
 /* Compact day cells a touch (but still roomy enough for chips) */
 #calendar .fc-daygrid-day-frame { min-height: 100px; }
+
+
+/* Sidebar: bigger logo, add tagline line under Harpr */
+.sidebar .brand-mark img {
+  width: 44px;
+  height: 44px;
+  max-width: 44px;
+  max-height: 44px;
+}
+.sidebar .sidebar-brand { gap: 14px; padding: 6px 6px 22px; }
+.sidebar .brand-name { font-size: 1.15rem; line-height: 1.05; }
+.sidebar .brand-tagline {
+  font-family: var(--font-sans);
+  font-size: 0.68rem;
+  color: var(--muted-fg);
+  letter-spacing: 0.02em;
+  margin-top: 3px;
+  line-height: 1.1;
+}
+
+/* Slightly larger baseline for readability on mobile */
+@media (max-width: 768px) {
+  html { font-size: 130% !important; }
+  body { font-size: 0.98rem; }
+}
+
+
+/* Quick add bar on Today */
+.quick-add {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 20px;
+}
+.quick-add input {
+  flex: 1;
+  padding: 11px 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--card);
+  color: var(--fg);
+  font-family: var(--font-sans);
+  font-size: 0.9rem;
+}
+.quick-add input:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+.quick-add input::placeholder { color: var(--muted-fg); }
+@media (max-width: 560px) {
+  .quick-add { flex-direction: column; }
+  .quick-add .btn { width: 100%; }
+}

@@ -161,26 +161,3 @@ class LogTimeForm(forms.ModelForm):
         return instance
 
 
-class SettingsForm(forms.ModelForm):
-    class Meta:
-        model = UserSettings
-        fields = (
-            "notifications_enabled",
-            "pomodoro_sound_enabled",
-            "pomodoro_notification_enabled",
-            "show_public_holidays",
-            "category_work_label",
-            "category_study_label",
-            "category_personal_label",
-            "category_health_label",
-        )
-        labels = {
-            "notifications_enabled": "Browser reminders",
-            "pomodoro_sound_enabled": "Timer sound",
-            "pomodoro_notification_enabled": "Timer notification",
-            "show_public_holidays": "Zambian public holidays",
-            "category_work_label": "Work",
-            "category_study_label": "Study",
-            "category_personal_label": "Personal",
-            "category_health_label": "Health",
-        }

@@ -47,11 +47,6 @@
     </div>
   </div>
 
-  <div class="form-row">
-    <label for="{{ form.remind_minutes_before.id_for_label }}">Reminder</label>
-    {{ form.remind_minutes_before }}
-  </div>
-
   <div class="form-actions">
     <button type="submit" class="btn btn-primary">
       {% if is_edit %}Save{% else %}Add task{% endif %}
@@ -59,7 +54,7 @@
     <a class="btn btn-ghost modal-close" href="{% url 'timeline' %}">Cancel</a>
     {% if is_edit %}
       <span class="spacer"></span>
-      <a class="btn btn-ghost" href="{% url 'log_time' task.pk %}">Log time</a>
+      <a class="btn btn-ghost" href="{% url 'log_time' task.pk %}" data-logtime-task="{{ task.pk }}">Log time</a>
       <button type="button" class="btn btn-danger"
               data-delete-task="{% url 'task_delete' task.pk %}"
               data-task-title="{{ task.title|escape }}">Delete</button>

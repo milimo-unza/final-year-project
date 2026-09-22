@@ -18,19 +18,12 @@ urlpatterns = [
     path("tasks/<int:pk>/toggle/", views.task_toggle, name="task_toggle"),
     path("tasks/<int:pk>/move-to-today/", views.task_move_to_today, name="task_move_to_today"),
 
-    # Time logging
-    path("tasks/<int:pk>/log-time/", views.log_time, name="log_time"),
-    path("time-logs/<int:pk>/delete/", views.delete_time_log, name="delete_time_log"),
+    # Quick add
+    path("tasks/quick-add/", views.quick_add, name="quick_add"),
 
     # Time logging
     path("tasks/<int:pk>/log-time/", views.log_time, name="log_time"),
     path("time-logs/<int:pk>/delete/", views.delete_time_log, name="delete_time_log"),
-
-    # Trash
-    path("trash/", views.trash_list, name="trash_list"),
-    path("trash/<int:pk>/restore/", views.trash_restore, name="trash_restore"),
-    path("trash/<int:pk>/purge/", views.trash_purge, name="trash_purge"),
-    path("trash/clear/", views.trash_clear, name="trash_clear"),
 
     # Calendar
     path("calendar/", views.calendar, name="calendar"),
@@ -38,13 +31,9 @@ urlpatterns = [
     path("calendar/day/<int:year>-<int:month>-<int:day>/",
          views.calendar_day_tasks, name="calendar_day_tasks"),
 
-    # Reminders
-    path("reminders/due/", views.reminders_due, name="reminders_due"),
-
     # Analytics
     path("analytics/", views.analytics, name="analytics"),
 
-    # Settings & activity log
-    path("settings/", views.settings_view, name="settings"),
+    # Activity log
     path("activity-log/", views.activity_log_view, name="activity_log"),
 ]

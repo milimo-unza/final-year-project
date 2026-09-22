@@ -12,7 +12,7 @@ from django.utils import timezone
 from django.views.decorators.http import require_POST
 
 from .context_processors import CATEGORY_COLORS, URGENT_COLOR
-from .forms import SettingsForm, TaskForm
+from .forms import TaskForm
 from .models import ActivityLog, Task, TimeLog, UserSettings
 
 
@@ -196,11 +196,11 @@ def task_edit(request, pk):
 def task_delete(request, pk):
     task = get_object_or_404(Task, pk=pk, user=request.user)
     if request.method == "POST":
-        task.soft_delete()
+        task.delete()
         _log(request.user, "deleted", task)
-        messages.info(request, "Task moved to trash")
+        messages.info(request, "Task deleted")
         return redirect(request.POST.get("next") or "timeline")
-    return render(request, "tasks/task_confirm_delete.html", {"task": task})
+    return redirect(request.POST.get("next") or "timeline")
 
 
 @login_required
@@ -241,42 +241,6 @@ def task_move_to_today(request, pk):
     messages.success(request, "Task moved to today")
     return redirect(request.POST.get("next") or "dashboard")
 
-
-# --- Trash -------------------------------------------------------------------
-
-@login_required
-def trash_list(request):
-    qs = Task.all_objects.filter(user=request.user, is_deleted=True).order_by("-deleted_at")
-    return render(request, "tasks/trash.html", {"tasks": qs})
-
-
-@login_required
-@require_POST
-def trash_restore(request, pk):
-    task = get_object_or_404(Task.all_objects, pk=pk, user=request.user, is_deleted=True)
-    task.restore()
-    _log(request.user, "restored", task)
-    messages.success(request, "Task restored")
-    return redirect(request.POST.get("next") or "trash_list")
-
-
-@login_required
-@require_POST
-def trash_purge(request, pk):
-    task = get_object_or_404(Task.all_objects, pk=pk, user=request.user, is_deleted=True)
-    title = task.title
-    task.delete()
-    ActivityLog.objects.create(user=request.user, action="purged", task_title=title[:200])
-    messages.info(request, "Task permanently deleted")
-    return redirect("trash_list")
-
-
-@login_required
-@require_POST
-def trash_clear(request):
-    Task.all_objects.filter(user=request.user, is_deleted=True).delete()
-    messages.info(request, "Trash cleared")
-    return redirect("trash_list")
 
 
 # --- Calendar ----------------------------------------------------------------
@@ -329,19 +293,12 @@ def calendar(request):
             "priority": t.priority, "completed": t.completed,
         })
 
-    holidays_by_day = {}
-    if settings_obj.show_public_holidays:
-        for y in {days[0].year, days[-1].year}:
-            for d, name in zambian_holidays(y):
-                if days[0] <= d <= days[-1]:
-                    holidays_by_day[d] = name
-
     columns = []
     for d in days:
         columns.append({
             "date": d, "label": d.strftime("%a"), "day_num": d.day,
             "is_today": d == today, "tasks": tasks_by_day.get(d, []),
-            "holiday": holidays_by_day.get(d),
+            "holiday": None,
         })
 
     # ---- LIST payload: next 60 days ----
@@ -376,52 +333,9 @@ def calendar(request):
         "today": today,
         "category_labels": cat_labels,
         "category_colors": CATEGORY_COLORS,
-        "urgent_color": URGENT_COLOR,
         "show_public_holidays": settings_obj.show_public_holidays,
     })
 
-
-
-_EASTER = {
-    2024: (date(2024, 3, 29), date(2024, 4, 1)),
-    2025: (date(2025, 4, 18), date(2025, 4, 21)),
-    2026: (date(2026, 4, 3),  date(2026, 4, 6)),
-    2027: (date(2027, 3, 26), date(2027, 3, 29)),
-    2028: (date(2028, 4, 14), date(2028, 4, 17)),
-}
-
-
-def _first_monday(year, month):
-    cal = _cal.Calendar()
-    for d in cal.itermonthdates(year, month):
-        if d.month == month and d.weekday() == 0:
-            return d
-    return None
-
-
-def zambian_holidays(year):
-    out = [
-        (date(year, 1, 1),   "New Year's Day"),
-        (date(year, 3, 8),   "Women's Day"),
-        (date(year, 3, 12),  "Youth Day"),
-        (date(year, 5, 1),   "Labour Day"),
-        (date(year, 5, 25),  "Africa Day"),
-        (date(year, 10, 24), "Independence Day"),
-        (date(year, 12, 25), "Christmas Day"),
-        (date(year, 12, 26), "Boxing Day"),
-    ]
-    if year in _EASTER:
-        gf, em = _EASTER[year]
-        out += [(gf, "Good Friday"), (em, "Easter Monday")]
-    heroes = _first_monday(year, 7)
-    if heroes:
-        out.append((heroes, "Heroes' Day"))
-        out.append((heroes + timedelta(days=1), "Unity Day"))
-    farmers = _first_monday(year, 8)
-    if farmers:
-        out.append((farmers, "Farmers' Day"))
-    out.sort(key=lambda x: x[0])
-    return out
 
 
 @login_required
@@ -448,26 +362,7 @@ def calendar_events(request):
             "completed": t.completed,
         })
 
-    # --- Holidays as FullCalendar events ---
-    holiday_events = []
-    if settings_obj.show_public_holidays:
-        today = timezone.localdate()
-        for y in {today.year, today.year + 1}:
-            for d, name in zambian_holidays(y):
-                holiday_events.append({
-                    "title": name,
-                    "start": d.isoformat(),
-                    "allDay": True,
-                    "display": "block",
-                    "classNames": ["holiday-event"],
-                    "backgroundColor": "#9ca3af",
-                    "borderColor": "#9ca3af",
-                    "textColor": "#ffffff",
-                    "editable": False,
-                    "extendedProps": {"holiday": True},
-                })
-
-    return JsonResponse({"days": by_day, "holidays": holiday_event_list(holiday_events)})
+    return JsonResponse({"days": by_day, "holidays": []})
 
 
 def holiday_event_list(events):
@@ -510,45 +405,13 @@ def calendar_day_tasks(request, year, month, day):
             "toggle_url": f"/tasks/{t.id}/toggle/",
         })
 
-    holidays_today = []
-    if settings_obj.show_public_holidays:
-        for d, name in zambian_holidays(target.year):
-            if d == target:
-                holidays_today.append(name)
-
     label = target.strftime("%A, %B ") + str(target.day) + target.strftime(", %Y")
     return JsonResponse({
         "date": target.isoformat(),
         "label": label,
         "tasks": tasks,
-        "holidays": holidays_today,
-    })
-
-
-# --- Reminders ---------------------------------------------------------------
-
-@login_required
-def reminders_due(request):
-    now = timezone.now()
-    horizon = now + timedelta(seconds=60)
-    qs = Task.objects.filter(
-        user=request.user,
-        completed=False,
-        due_date__isnull=False,
-        remind_minutes_before__gt=0,
-    )
-    due = []
-    for t in qs:
-        remind_at = t.due_date - timedelta(minutes=t.remind_minutes_before)
-        if now <= remind_at <= horizon:
-            local = timezone.localtime(t.due_date)
-            due.append({
-                "id": t.id,
-                "title": t.title,
-                "due": local.strftime("%H:%M, %b ") + str(local.day),
-                "remind_minutes_before": t.remind_minutes_before,
             })
-    return JsonResponse({"reminders": due, "checked_at": now.isoformat()})
+
 
 
 # --- CSV export --------------------------------------------------------------
@@ -576,6 +439,47 @@ def timeline_export_csv(request):
             t.remind_minutes_before or "",
         ])
     return response
+
+
+# --- Quick add --------------------------------------------------------------
+
+@login_required
+@require_POST
+def quick_add(request):
+    title = (request.POST.get("title") or "").strip()
+    if not title:
+        return JsonResponse({"ok": False, "error": "Title required"}, status=400)
+
+    due_raw = (request.POST.get("due_date") or "").strip()
+    due = None
+    if due_raw:
+        try:
+            from datetime import datetime as _dt
+            naive = _dt.fromisoformat(due_raw)
+            if timezone.is_naive(naive):
+                due = timezone.make_aware(naive, timezone.get_current_timezone())
+            else:
+                due = naive
+        except ValueError:
+            due = None
+
+    category = (request.POST.get("category") or "work").strip()
+    if category not in dict(Task.CATEGORY_CHOICES):
+        category = "work"
+
+    task = Task.objects.create(
+        user=request.user,
+        title=title[:200],
+        due_date=due,
+        category=category,
+    )
+    _log(request.user, "created", task)
+    return JsonResponse({
+        "ok": True,
+        "id": task.pk,
+        "title": task.title,
+        "due_date": due.isoformat() if due else None,
+    })
 
 
 # --- Time logging ------------------------------------------------------------
@@ -706,24 +610,6 @@ def analytics(request):
         "bar_pending": bar_pending,
         "total_minutes": total_minutes,
         "total_completed": total_completed,
-    })
-
-# --- Settings ----------------------------------------------------------------
-
-@login_required
-def settings_view(request):
-    settings_obj = UserSettings.for_user(request.user)
-    if request.method == "POST":
-        form = SettingsForm(request.POST, instance=settings_obj)
-        if form.is_valid():
-            form.save()
-            messages.success(request, "Settings updated")
-            return redirect("settings")
-    else:
-        form = SettingsForm(instance=settings_obj)
-    return render(request, "tasks/settings.html", {
-        "form": form,
-        "settings": settings_obj,
     })
 
 

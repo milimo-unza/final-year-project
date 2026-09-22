@@ -27,14 +27,12 @@ class Task(models.Model):
         ("health", "Health"),
     ]
     PRIORITY_CHOICES = [
-        ("urgent", "Urgent"),
         ("high", "High"),
         ("medium", "Medium"),
         ("low", "Low"),
     ]
     # Lower number = higher priority. Used for ordering and dot precedence.
-    PRIORITY_RANK = {"urgent": 0, "high": 1, "medium": 2, "low": 3}
-    # Used by the calendar to pick a single dot per day when no urgent task is present.
+    PRIORITY_RANK = {"high": 1, "medium": 2, "low": 3}
     CATEGORY_RANK = {"work": 0, "study": 1, "personal": 2, "health": 3}
 
     REMIND_CHOICES = [
@@ -118,8 +116,6 @@ class UserSettings(models.Model):
     notifications_enabled = models.BooleanField(default=True)
 
     # v1.3 — per-user overrides
-    pomodoro_sound_enabled = models.BooleanField(default=True)
-    pomodoro_notification_enabled = models.BooleanField(default=True)
     show_public_holidays = models.BooleanField(default=True)
 
     # Renamable category labels (defaults match Task.CATEGORY_CHOICES).
