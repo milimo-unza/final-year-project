@@ -2183,3 +2183,32 @@ html { font-size: 130% !important; }
 .insights-chart-wrap .insights-canvas.active {
   display: block !important;
 }
+
+
+/* Layout: let main content stretch to fill wide screens */
+.main {
+  max-width: none !important;
+  padding: 40px 56px;
+}
+@media (min-width: 1600px) {
+  .main { padding: 40px 80px; }
+}
+
+/* Timeline card stretches full width */
+.timeline-scroll { max-height: 70vh; }
+.card { width: 100%; }
+
+/* Calendar grid fills its card */
+#calendar { width: 100%; }
+
+/* Log-time modal: hour + minute side by side */
+.modal .form-row.two-up,
+#logtime-modal-body .form-row.two-up {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+  align-items: end;
+}
+
+/* Full-bleed week + list grids */
+.week-grid { width: 100%; }
