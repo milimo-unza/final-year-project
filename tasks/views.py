@@ -77,6 +77,49 @@ def dashboard(request):
         .order_by("-completed_at")[:5]
     )
 
+    # Chart data for the Today page analytics card
+    from django.db.models import Sum as _Sum
+    from datetime import timedelta as _td
+
+    cat_totals = (
+        TimeLog.objects
+        .filter(user=user)
+        .values("task__category")
+        .annotate(total=_Sum("minutes"))
+    )
+    _cat_labels = UserSettings.for_user(user).category_labels()
+    cat_data = {}
+    for row in cat_totals:
+        key = row["task__category"] or "other"
+        cat_data[key] = row["total"] or 0
+    pie_labels = [_cat_labels.get(k, k.title()) for k in cat_data.keys()]
+    pie_values = list(cat_data.values())
+
+    _today = timezone.localdate()
+    day_labels = []
+    day_values = []
+    for i in range(6, -1, -1):
+        day = _today - _td(days=i)
+        day_labels.append(day.strftime("%a"))
+        total = (
+            TimeLog.objects
+            .filter(user=user, logged_at__date=day)
+            .aggregate(s=_Sum("minutes"))["s"] or 0
+        )
+        day_values.append(total)
+
+    bar_labels = []
+    bar_done = []
+    bar_pending = []
+    for key in ("work", "study", "personal", "health"):
+        label = _cat_labels.get(key, key.title())
+        bar_labels.append(label)
+        bar_done.append(Task.objects.filter(user=user, category=key, completed=True).count())
+        bar_pending.append(Task.objects.filter(user=user, category=key, completed=False).count())
+
+    total_minutes = TimeLog.objects.filter(user=user).aggregate(s=_Sum("minutes"))["s"] or 0
+    total_completed = Task.objects.filter(user=user, completed=True).count()
+
     return render(request, "tasks/dashboard.html", {
         "todays_pending": todays_pending,
         "someday_pending": someday_pending,
@@ -85,6 +128,15 @@ def dashboard(request):
         "pending_count": pending_count,
         "recently_completed": recently_completed,
         "today": now,
+        "pie_labels": pie_labels,
+        "pie_values": pie_values,
+        "day_labels": day_labels,
+        "day_values": day_values,
+        "bar_labels": bar_labels,
+        "bar_done": bar_done,
+        "bar_pending": bar_pending,
+        "total_minutes": total_minutes,
+        "total_completed": total_completed,
     })
 
 

@@ -2111,3 +2111,75 @@ html { font-size: 130% !important; }
   .quick-add { flex-direction: column; }
   .quick-add .btn { width: 100%; }
 }
+
+
+/* Insights card on Today (chart switcher) */
+.chart-tabs {
+  display: flex;
+  gap: 2px;
+  background: var(--muted-bg);
+  padding: 2px;
+  border-radius: 6px;
+}
+.chart-tab {
+  padding: 3px 8px;
+  font-size: 0.68rem;
+  font-weight: 500;
+  border: none;
+  background: transparent;
+  color: var(--muted-fg);
+  border-radius: 4px;
+  cursor: pointer;
+}
+.chart-tab.active {
+  background: var(--card);
+  color: var(--fg);
+  font-weight: 600;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+}
+
+.insights-kpis {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+.insight-kpi { display: flex; flex-direction: column; }
+.insight-num {
+  font-family: var(--font-serif);
+  font-size: 1.35rem;
+  font-weight: 600;
+  color: var(--fg);
+  line-height: 1.1;
+}
+.insight-unit {
+  font-family: var(--font-sans);
+  font-size: 0.7rem;
+  color: var(--muted-fg);
+  margin-left: 2px;
+}
+.insight-label {
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--muted-fg);
+  margin-top: 3px;
+  font-weight: 600;
+}
+
+.insights-chart-wrap {
+  position: relative;
+  height: 180px;
+}
+
+/* Hide all canvases by default, using !important to beat Chart.js's inline styles */
+.insights-chart-wrap .insights-canvas {
+  position: absolute !important;
+  inset: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+  display: none !important;
+}
+.insights-chart-wrap .insights-canvas.active {
+  display: block !important;
+}

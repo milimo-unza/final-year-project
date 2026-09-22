@@ -1,5 +1,9 @@
 {% extends 'base.html' %}
 {% load harpr_extras %}
+{% block head_extra %}
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+{% endblock %}
+
 {% block title %}Today · {{ APP_NAME }}{% endblock %}
 
 {% block content %}
@@ -129,6 +133,34 @@
     </div>
 
     <div class="card">
+      <div class="card-head">
+        <h2>Insights</h2>
+        <div class="chart-tabs">
+          <button type="button" class="chart-tab active" data-chart="pie">Pie</button>
+          <button type="button" class="chart-tab" data-chart="activity">Activity</button>
+          <button type="button" class="chart-tab" data-chart="tasks">Tasks</button>
+        </div>
+      </div>
+
+      <div class="insights-kpis">
+        <div class="insight-kpi">
+          <div class="insight-num">{{ total_minutes }}<span class="insight-unit">m</span></div>
+          <div class="insight-label">Logged</div>
+        </div>
+        <div class="insight-kpi">
+          <div class="insight-num">{{ total_completed }}</div>
+          <div class="insight-label">Completed</div>
+        </div>
+      </div>
+
+      <div class="insights-chart-wrap">
+        <canvas id="insights-pie" class="insights-canvas active"></canvas>
+        <canvas id="insights-activity" class="insights-canvas"></canvas>
+        <canvas id="insights-tasks" class="insights-canvas"></canvas>
+      </div>
+    </div>
+
+    <div class="card">
       <div class="card-head"><h2>Recently completed</h2></div>
       {% if recently_completed %}
         {% for t in recently_completed %}
@@ -151,6 +183,80 @@
 
   </div>
 </div>
+
 {% endblock %}
 
+{% block scripts %}
+{{ block.super }}
+<script>
+(function () {
+  if (typeof Chart === 'undefined') return;
 
+  var pieLabels = {{ pie_labels|safe }};
+  var pieValues = {{ pie_values|safe }};
+  var dayLabels = {{ day_labels|safe }};
+  var dayValues = {{ day_values|safe }};
+  var barLabels = {{ bar_labels|safe }};
+  var barDone = {{ bar_done|safe }};
+  var barPending = {{ bar_pending|safe }};
+
+  var COLORS = ['#3B6EA8', '#7A5FA8', '#4F8A5B', '#3F8B92'];
+
+  var pieCanvas = document.getElementById('insights-pie');
+  var activityCanvas = document.getElementById('insights-activity');
+  var tasksCanvas = document.getElementById('insights-tasks');
+
+  if (pieCanvas && pieValues.length) {
+    new Chart(pieCanvas, {
+      type: 'doughnut',
+      data: { labels: pieLabels, datasets: [{ data: pieValues, backgroundColor: COLORS, borderWidth: 0 }] },
+      options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { boxWidth: 10, font: { size: 10 } } } } }
+    });
+  }
+  if (activityCanvas) {
+    new Chart(activityCanvas, {
+      type: 'line',
+      data: { labels: dayLabels, datasets: [{ data: dayValues, borderColor: '#b5623e', backgroundColor: 'rgba(181,98,62,0.1)', fill: true, tension: 0.3, pointRadius: 2 }] },
+      options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { font: { size: 9 } } }, x: { ticks: { font: { size: 9 } } } } }
+    });
+  }
+  if (tasksCanvas) {
+    new Chart(tasksCanvas, {
+      type: 'bar',
+      data: { labels: barLabels, datasets: [
+        { label: 'Done', data: barDone, backgroundColor: '#4F8A5B' },
+        { label: 'Pending', data: barPending, backgroundColor: '#d9d4c6' }
+      ]},
+      options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { boxWidth: 10, font: { size: 10 } } } }, scales: { y: { beginAtZero: true, ticks: { precision: 0, font: { size: 9 } } }, x: { ticks: { font: { size: 9 } } } } }
+    });
+  }
+
+  // Tab switching
+  var tabs = document.querySelectorAll('.chart-tab');
+  var canvases = {
+    pie: document.getElementById('insights-pie'),
+    activity: document.getElementById('insights-activity'),
+    tasks: document.getElementById('insights-tasks')
+  };
+  var remembered = 'pie';
+  try { remembered = localStorage.getItem('harpr-insights-tab') || 'pie'; } catch (e) {}
+
+  function activate(name) {
+    Object.keys(canvases).forEach(function (k) {
+      if (!canvases[k]) return;
+      canvases[k].classList.toggle('active', k === name);
+    });
+    tabs.forEach(function (t) {
+      t.classList.toggle('active', t.dataset.chart === name);
+    });
+    try { localStorage.setItem('harpr-insights-tab', name); } catch (e) {}
+  }
+
+  tabs.forEach(function (t) {
+    t.addEventListener('click', function () { activate(t.dataset.chart); });
+  });
+
+  activate(remembered);
+})();
+</script>
+{% endblock %}
