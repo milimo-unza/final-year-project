@@ -18,6 +18,14 @@ urlpatterns = [
     path("tasks/<int:pk>/toggle/", views.task_toggle, name="task_toggle"),
     path("tasks/<int:pk>/move-to-today/", views.task_move_to_today, name="task_move_to_today"),
 
+    # Time logging
+    path("tasks/<int:pk>/log-time/", views.log_time, name="log_time"),
+    path("time-logs/<int:pk>/delete/", views.delete_time_log, name="delete_time_log"),
+
+    # Time logging
+    path("tasks/<int:pk>/log-time/", views.log_time, name="log_time"),
+    path("time-logs/<int:pk>/delete/", views.delete_time_log, name="delete_time_log"),
+
     # Trash
     path("trash/", views.trash_list, name="trash_list"),
     path("trash/<int:pk>/restore/", views.trash_restore, name="trash_restore"),

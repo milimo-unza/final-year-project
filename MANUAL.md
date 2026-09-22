@@ -1,6 +1,6 @@
 # User Manual — Harpr
 
-**Harpr — Task & Activity Planner**
+**Harpr — Time & Activity Planner**
 
 Welcome! This guide walks you through every screen of Harpr. The app is small
 on purpose — five real pages, a sidebar (or bottom bar on mobile), and a

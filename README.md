@@ -1,4 +1,4 @@
-# Harpr — Task & Activity Planner
+# Harpr — Time & Activity Planner
 
 A simple task-and-activity planner built in Django. Final-year project for the
 **BSc Computer Science** programme at the **University of Zambia (UNZA)** —

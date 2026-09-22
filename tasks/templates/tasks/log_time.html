@@ -1,0 +1,47 @@
+{% extends 'base.html' %}
+{% block title %}Log time · {{ task.title }}{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div class="titles">
+    <h1>Log time</h1>
+    <div class="meta">{{ task.title }}</div>
+  </div>
+</div>
+
+<div class="card" style="max-width:520px;">
+  {% if task.duration_minutes %}
+    <p class="text-muted" style="font-size:0.85rem; margin-top:0;">
+      Planned duration: {{ task.duration_minutes }} minutes.
+      {% if task.total_minutes %}Logged so far: {{ task.total_minutes }} minutes.{% endif %}
+    </p>
+  {% endif %}
+
+  <form method="post" class="form-grid">
+    {% csrf_token %}
+    {{ form.non_field_errors }}
+    <input type="hidden" name="next" value="{{ request.META.HTTP_REFERER|default:'' }}">
+
+    <div class="form-row two-up">
+      <div>
+        <label for="{{ form.hours.id_for_label }}">Hours</label>
+        {{ form.hours }}
+      </div>
+      <div>
+        <label for="{{ form.minutes_part.id_for_label }}">Minutes</label>
+        {{ form.minutes_part }}
+      </div>
+    </div>
+
+    <div class="form-row">
+      <label for="{{ form.note.id_for_label }}">Note (optional)</label>
+      {{ form.note }}
+    </div>
+
+    <div class="form-actions">
+      <button type="submit" class="btn btn-primary">Save entry</button>
+      <a class="btn btn-ghost" href="{% url 'dashboard' %}">Cancel</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

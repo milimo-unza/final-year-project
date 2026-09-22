@@ -1975,3 +1975,86 @@ form p .helptext, form p ul { font-size: 0.74rem; color: var(--muted-fg); margin
   box-shadow: 0 0 0 2px var(--accent-soft);
 }
 .reminders-pip--hint[hidden] { display: none; }
+
+/* Auth card: brand + tagline under the logo */
+.auth-card .brand-sub {
+  font-size: 0.68rem;
+  color: var(--muted-fg);
+  margin-top: 3px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+/* ============================================================
+   Visual downscale — trim the app to a more typical student scale
+   ============================================================ */
+
+/* Reduce the base type scale from 140% back to something human */
+html { font-size: 118% !important; }
+
+/* Auth card brand tagline: lowercase, sans-serif, quiet */
+.auth-card .brand-sub {
+  font-family: var(--font-sans) !important;
+  font-size: 0.72rem;
+  font-weight: 400;
+  color: var(--muted-fg);
+  text-transform: none;
+  letter-spacing: 0.01em;
+  margin-top: 3px;
+}
+
+/* Auth card: smaller inputs */
+.auth-card .form-row input {
+  padding: 9px 12px;
+  font-size: 0.9rem;
+}
+
+/* Compact form inputs everywhere */
+.form-row input,
+.form-row select,
+.form-row textarea,
+.task-form input,
+.task-form select {
+  padding: 8px 11px !important;
+  font-size: 0.88rem !important;
+}
+
+/* Shrink page headings */
+.page-head .titles h1 { font-size: 1.55rem; letter-spacing: -0.01em; }
+.page-head .titles .meta { font-size: 0.78rem; margin-top: 4px; }
+
+/* Shrink dashboard stat number */
+.stat-value { font-size: 2.1rem; }
+.stat-sub { font-size: 0.75rem; }
+
+/* Shrink KPI values if any survive */
+.kpi .value { font-size: 1.55rem; }
+
+/* Shrink pomodoro display */
+.pomodoro-display { font-size: 2.35rem; }
+
+/* Compact cards */
+.card { padding: 20px; }
+
+/* Compact buttons */
+.btn { padding: 8px 15px; font-size: 0.84rem; }
+.btn-sm { padding: 5px 10px; font-size: 0.76rem; }
+.btn-primary { padding: 9px 16px; }
+
+/* Compact task rows */
+.task-row { padding: 11px 0; gap: 12px; }
+.task-title { font-size: 0.9rem; }
+.task-meta { font-size: 0.74rem; }
+
+/* Compact nav links */
+.navlink { padding: 8px 10px; font-size: 0.84rem; }
+
+/* Compact sidebar brand */
+.sidebar .brand-name { font-size: 1.05rem; }
+.sidebar .brand-mark img { width: 34px; height: 34px; max-width: 34px; max-height: 34px; }
+
+/* Month label in calendar toolbar */
+.cal-toolbar-label { font-size: 1rem; }
+
+/* Compact day cells a touch (but still roomy enough for chips) */
+#calendar .fc-daygrid-day-frame { min-height: 100px; }

@@ -1,4 +1,4 @@
-# Build Document — Harpr (Task & Activity Planner)
+# Build Document — Harpr (Time & Activity Planner)
 
 **Author**: Milimo Kasamba Mukkuli
 **Programme**: BSc Computer Science, University of Zambia
@@ -346,7 +346,7 @@ The new name had to be:
 
 I landed on **Harpr** — a misspelling of *harp*, which felt right because
 each task is a string in your day's chord. The tagline became
-**"Task & Activity Planner"** and the favicon became a simple emerald harp
+**"Time & Activity Planner"** and the favicon became a simple emerald harp
 SVG (six strings, drawn in 24×24 viewport space).
 
 Because the brand string appears in dozens of templates, I added a
@@ -356,7 +356,7 @@ free:
 ```python
 # tasks/context_processors.py
 def branding(_request):
-    return {"APP_NAME": "Harpr", "APP_TAGLINE": "Task & Activity Planner"}
+    return {"APP_NAME": "Harpr", "APP_TAGLINE": "Time & Activity Planner"}
 ```
 
 That single change let me delete every hard-coded "Cosmos" string in the

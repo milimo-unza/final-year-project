@@ -1,4 +1,4 @@
-# Harpr — Task & Activity Planner
+# Harpr — Time & Activity Planner
 
 Final-year BSc Computer Science project for the University of Zambia (UNZA).
 Author: *Milimo Kasamba Mukkuli*. Supervisor: *Prof. J. Phiri*.

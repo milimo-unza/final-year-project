@@ -3,7 +3,7 @@
 from .models import UserSettings
 
 APP_NAME = "Harpr"
-APP_TAGLINE = "Task & Activity Planner"
+APP_TAGLINE = "Time & Activity Planner"
 
 # Single source of truth for category dot colours (not user-editable per spec).
 CATEGORY_COLORS = {

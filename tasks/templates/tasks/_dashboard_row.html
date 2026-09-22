@@ -13,11 +13,13 @@
       <a href="{% url 'task_edit' t.pk %}" data-modal="task-edit">{{ t.title }}</a>
     </div>
     <div class="task-meta">
-      {% if t.due_date %}{{ t.due_date|date:"H:i" }}{% if t.duration_minutes %} <span class="text-muted">({{ t.duration_minutes }}m)</span>{% endif %}<span class="sep">·</span>{% endif %}
+      {% if t.due_date %}{{ t.due_date|date:"H:i" }}{% if t.duration_minutes %} <span class="text-muted">({{ t.duration_minutes }}m planned)</span>{% endif %}<span class="sep">·</span>{% endif %}
       <span class="cat-chip cat-{{ t.category }}">{{ t.category|cat_label:category_labels }}</span>
+      {% with logged=t.total_minutes %}{% if logged %}<span class="sep">·</span><span class="text-muted">{{ logged }}m logged</span>{% endif %}{% endwith %}
     </div>
   </div>
   <div class="row-flex">
+    <a class="btn btn-sm btn-ghost" href="{% url 'log_time' t.pk %}">Log time</a>
     <span class="pill {{ t.priority }}">{{ t.get_priority_display }}</span>
   </div>
 </div>

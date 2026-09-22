@@ -13,7 +13,7 @@ from django.views.decorators.http import require_POST
 
 from .context_processors import CATEGORY_COLORS, URGENT_COLOR
 from .forms import SettingsForm, TaskForm
-from .models import ActivityLog, Task, UserSettings
+from .models import ActivityLog, Task, TimeLog, UserSettings
 
 
 # --- helpers -----------------------------------------------------------------
@@ -576,6 +576,72 @@ def timeline_export_csv(request):
             t.remind_minutes_before or "",
         ])
     return response
+
+
+# --- Time logging ------------------------------------------------------------
+
+from .forms import LogTimeForm  # noqa: E402
+
+@login_required
+def log_time(request, pk):
+    """Log time spent on a task. Small form, POST-only in practice."""
+    task = get_object_or_404(Task, pk=pk, user=request.user)
+    if request.method == "POST":
+        form = LogTimeForm(request.POST)
+        if form.is_valid():
+            entry = form.save(commit=False)
+            entry.user = request.user
+            entry.task = task
+            entry.save()
+            messages.success(request, f"Logged {entry.minutes} min on '{task.title}'")
+            return redirect(request.POST.get("next") or "dashboard")
+    else:
+        form = LogTimeForm()
+    return render(request, "tasks/log_time.html", {
+        "form": form,
+        "task": task,
+    })
+
+@login_required
+@require_POST
+def delete_time_log(request, pk):
+    """Remove a time log entry the user owns."""
+    entry = get_object_or_404(TimeLog, pk=pk, user=request.user)
+    task_pk = entry.task_id
+    entry.delete()
+    messages.info(request, "Time entry removed")
+    return redirect(request.POST.get("next") or "task_edit", pk=task_pk)
+
+# --- Time logging ------------------------------------------------------------
+
+from .forms import LogTimeForm  # noqa: E402
+
+
+@login_required
+def log_time(request, pk):
+    task = get_object_or_404(Task, pk=pk, user=request.user)
+    if request.method == "POST":
+        form = LogTimeForm(request.POST)
+        if form.is_valid():
+            entry = form.save(commit=False)
+            entry.user = request.user
+            entry.task = task
+            entry.save()
+            messages.success(request, "Logged %d min on '%s'" % (entry.minutes, task.title))
+            return redirect(request.POST.get("next") or "dashboard")
+    else:
+        form = LogTimeForm()
+    return render(request, "tasks/log_time.html", {"form": form, "task": task})
+
+
+@login_required
+@require_POST
+def delete_time_log(request, pk):
+    entry = get_object_or_404(TimeLog, pk=pk, user=request.user)
+    task_pk = entry.task_id
+    entry.delete()
+    messages.info(request, "Time entry removed")
+    return redirect("task_edit", pk=task_pk)
 
 
 # --- Settings ----------------------------------------------------------------

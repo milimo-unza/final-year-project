@@ -49,11 +49,12 @@
                     {% endif %}
                     <span class="cat-chip cat-{{ t.category }}">{{ t.category|cat_label:category_labels }}</span>
                     {% if t.completed and t.completed_at %}<span class="sep">·</span>completed {{ t.completed_at|date:"M j" }}{% endif %}
-                    {% if t.remind_minutes_before %}<span class="sep">·</span>⏰ {{ t.remind_minutes_before }}m before{% endif %}
+                    {% with logged=t.total_minutes %}{% if logged %}<span class="sep">·</span><span class="text-muted">{{ logged }}m logged</span>{% endif %}{% endwith %}
                   </div>
                 </div>
                 <div class="row-flex">
                   <span class="pill {{ t.priority }}">{{ t.get_priority_display }}</span>
+                  <a class="btn btn-sm btn-ghost" href="{% url 'log_time' t.pk %}">Log time</a>
                   <a class="btn btn-sm btn-ghost" href="{% url 'task_edit' t.pk %}" data-modal="task-edit">Edit</a>
                   <button type="button" class="btn btn-sm btn-ghost"
                           data-delete-task="{% url 'task_delete' t.pk %}"
