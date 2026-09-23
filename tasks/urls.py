@@ -31,9 +31,6 @@ urlpatterns = [
     path("calendar/day/<int:year>-<int:month>-<int:day>/",
          views.calendar_day_tasks, name="calendar_day_tasks"),
 
-    # Analytics
-    path("analytics/", views.analytics, name="analytics"),
-
     # Activity log
     path("activity-log/", views.activity_log_view, name="activity_log"),
 ]
