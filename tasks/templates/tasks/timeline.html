@@ -67,10 +67,6 @@
     {% endif %}
   </div>
 </div>
-
-<button type="button" class="floating-today-btn" id="floating-today-btn" hidden aria-label="Scroll to today">
-  📅 Today
-</button>
 {% endblock %}
 
 {% block scripts %}
@@ -78,8 +74,7 @@
 (function () {
   var scrollEl = document.getElementById('timeline-scroll');
   var anchor   = document.getElementById('today-anchor');
-  var btn      = document.getElementById('floating-today-btn');
-  if (!scrollEl || !anchor || !btn) return;
+  if (!scrollEl || !anchor) return;
 
   // Scroll to today on initial load.
   function scrollToToday(smooth) {
