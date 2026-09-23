@@ -46,23 +46,21 @@
                 <input type="hidden" name="next" value="{% url 'dashboard' %}">
                 <button type="submit" class="checkbox-btn" aria-label="Mark done"></button>
               </form>
-              <div>
+              <div class="task-main">
                 <div class="task-title">
                   <a href="{% url 'task_edit' t.pk %}" data-modal="task-edit">{{ t.title }}</a>
                 </div>
                 <div class="task-meta">
                   Was due {{ t.due_date|date:"D, M j · H:i" }}
-                  <span class="sep">·</span>
-                  <span class="cat-chip cat-{{ t.category }}">{{ t.category|cat_label:category_labels }}</span>
                 </div>
               </div>
-              <div class="row-flex">
-                <form method="post" action="{% url 'task_move_to_today' t.pk %}" class="inline-form">
-                  {% csrf_token %}
-                  <button type="submit" class="btn btn-sm btn-ghost">Move to today</button>
-                </form>
-                <span class="pill {{ t.priority }}">{{ t.get_priority_display }}</span>
-              </div>
+              <form method="post" action="{% url 'task_move_to_today' t.pk %}" class="inline-form overdue-action">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-sm btn-ghost" title="Move to today">
+                  <span class="desktop-only">Move to today</span>
+                  <span class="mobile-only">→</span>
+                </button>
+              </form>
             </div>
           {% endfor %}
         </div>
