@@ -249,44 +249,6 @@ a:hover { color: var(--accent); }
   margin: 0 0 14px;
 }
 
-/* ====================== KPI grid ====================== */
-
-.kpi-grid {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 16px;
-  background: transparent;
-  margin-bottom: 32px;
-  border: none;
-  overflow: visible;
-}
-.kpi {
-  padding: 22px 26px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  background: var(--card);
-  box-shadow: var(--shadow-sm);
-}
-.kpi .label {
-  font-size: 0.7rem; font-weight: 600;
-  color: var(--muted-fg);
-  letter-spacing: .1em;
-  text-transform: uppercase;
-}
-.kpi .value {
-  font-family: var(--font-serif);
-  font-variant-numeric: tabular-nums;
-  font-size: 2rem;
-  font-weight: 600;
-  margin-top: 10px;
-  letter-spacing: -.015em;
-}
-.kpi .value .unit { font-size: 0.9rem; color: var(--muted-fg); margin-left: 4px; font-weight: 400; font-family: var(--font-sans); }
-
-@media (max-width: 880px) {
-  .kpi-grid { grid-template-columns: repeat(2, 1fr); }
-}
-
 /* ====================== two-col ====================== */
 
 .two-col { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 28px; }
@@ -657,7 +619,6 @@ kbd {
   .page-head .titles h1 { font-size: 1.5rem; }
   .page-head .row-flex { flex-wrap: wrap; }
   .two-col { grid-template-columns: 1fr; }
-  .kpi-grid { grid-template-columns: repeat(2, 1fr); }
   .form-actions { flex-direction: column; align-items: stretch; }
   .form-actions .btn { width: 100%; }
   .task-row { grid-template-columns: 26px 1fr auto; }
@@ -751,22 +712,6 @@ form p .helptext, form p ul { font-size: 0.74rem; color: var(--muted-fg); margin
 .legend-dot {
   display: inline-block; width: 10px; height: 10px;
   border-radius: 50%; margin-right: 8px; vertical-align: middle;
-}
-
-/* ====================== floating today button ====================== */
-
-.floating-today-btn {
-  position: fixed; right: 32px; bottom: 32px; z-index: 50;
-  background: var(--accent); color: var(--accent-fg);
-  border: none; border-radius: 999px;
-  padding: 12px 20px;
-  font-size: 0.87rem; font-weight: 600; cursor: pointer;
-  box-shadow: var(--shadow-md);
-  transition: transform .12s;
-}
-.floating-today-btn:hover { transform: translateY(-2px); }
-@media (max-width: 768px) {
-  .floating-today-btn { right: 16px; bottom: 88px; padding: 10px 16px; font-size: 0.82rem; }
 }
 
 /* ====================== day modal ====================== */
@@ -2023,7 +1968,6 @@ html { font-size: 130% !important; }
 .stat-sub { font-size: 0.75rem; }
 
 /* Shrink KPI values if any survive */
-.kpi .value { font-size: 1.55rem; }
 
 /* Shrink pomodoro display */
 .pomodoro-display { font-size: 2.35rem; }
@@ -2458,9 +2402,6 @@ html { font-size: 130% !important; }
 }
 
 
-/* Kill the old floating Today button (no longer in the DOM but safe to remove) */
-.floating-today-btn { display: none !important; }
-
 /* Timeline header scroll button */
 #scroll-today-btn {
   width: 32px;
@@ -2555,4 +2496,54 @@ html { font-size: 130% !important; }
   #scroll-today-btn {
     display: inline-flex;
   }
+}
+
+/* ============================================================
+   Mobile: Calendar toolbar (stack nav / label / tabs)
+   ============================================================ */
+@media (max-width: 640px) {
+  .cal-card .cal-toolbar {
+    grid-template-columns: 1fr auto;
+    grid-template-areas:
+      "nav   tabs"
+      "label label";
+    gap: 10px 8px;
+    padding: 12px 14px;
+  }
+  .cal-card .cal-toolbar-nav   { grid-area: nav;   justify-self: start; }
+  .cal-card .cal-toolbar-tabs  { grid-area: tabs;  justify-self: end; }
+  .cal-card .cal-toolbar-label {
+    grid-area: label;
+    justify-self: start;
+    font-size: 1rem;
+    padding-top: 2px;
+  }
+  .cal-card .cal-toolbar-tabs .view-tab {
+    padding: 6px 12px;
+    font-size: 0.78rem;
+  }
+  .cal-card .cal-toolbar-nav .icon-btn {
+    width: 28px;
+    height: 28px;
+    font-size: 0.9rem;
+  }
+  .cal-card .cal-view { padding: 12px 12px 16px; }
+}
+
+/* ============================================================
+   Mobile: Activity list (two-line stacked layout)
+   ============================================================ */
+@media (max-width: 640px) {
+  .activity-list li {
+    grid-template-columns: auto 1fr;
+    grid-template-areas:
+      "time   time"
+      "action task";
+    gap: 4px 10px;
+    padding: 12px 0;
+    align-items: center;
+  }
+  .activity-time   { grid-area: time;   font-size: 0.72rem; order: -1; }
+  .activity-action { grid-area: action; justify-self: start; font-size: 0.62rem; padding: 2px 7px; }
+  .activity-task   { grid-area: task;   font-size: 0.85rem; line-height: 1.35; }
 }

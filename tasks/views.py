@@ -450,11 +450,6 @@ def calendar_events(request):
     return JsonResponse({"days": by_day, "holidays": []})
 
 
-def holiday_event_list(events):
-    """Small passthrough so the shape is explicit; keeps the door open
-    for future filtering without changing the response shape."""
-    return events
-
 
 
 @login_required
