@@ -741,11 +741,6 @@ form p .helptext, form p ul { font-size: 0.74rem; color: var(--muted-fg); margin
   color: #fff;
   vertical-align: middle;
 }
-.cat-chip.cat-work     { background: #3B6EA8; }
-.cat-chip.cat-study    { background: #7A5FA8; }
-.cat-chip.cat-personal { background: #4F8A5B; }
-.cat-chip.cat-health   { background: #3F8B92; }
-
 .task-row.urgent-row {
   border-left: 3px solid #b1443a;
   padding-left: 12px;
@@ -2507,4 +2502,57 @@ html { font-size: 130% !important; }
   .page-head .titles .meta { font-size: 0.72rem; }
   .page-head .row-flex { gap: 6px; flex-wrap: wrap; }
   .page-head .btn { padding: 7px 12px; font-size: 0.78rem; }
+}
+
+
+/* Category tag: same shape as the old priority pill, but muted category colours */
+.cat-tag {
+  display: inline-block;
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  padding: 3px 8px;
+  border-radius: 4px;
+  font-weight: 600;
+  vertical-align: middle;
+  border: 1px solid transparent;
+}
+
+.cat-tag.cat-tag-work     { background: rgba(139, 164, 196, 0.20); color: #5a7ba0; border-color: rgba(139, 164, 196, 0.35); }
+.cat-tag.cat-tag-study    { background: rgba(169, 156, 196, 0.20); color: #7865a0; border-color: rgba(169, 156, 196, 0.35); }
+.cat-tag.cat-tag-personal { background: rgba(148, 191, 160, 0.22); color: #4a7d57; border-color: rgba(148, 191, 160, 0.40); }
+.cat-tag.cat-tag-health   { background: rgba(143, 184, 186, 0.22); color: #4a7a7c; border-color: rgba(143, 184, 186, 0.40); }
+
+[data-theme="dark"] .cat-tag.cat-tag-work     { background: rgba(139, 164, 196, 0.15); color: #a3b8d0; }
+[data-theme="dark"] .cat-tag.cat-tag-study    { background: rgba(169, 156, 196, 0.15); color: #c2b3dc; }
+[data-theme="dark"] .cat-tag.cat-tag-personal { background: rgba(148, 191, 160, 0.15); color: #a7c9b0; }
+[data-theme="dark"] .cat-tag.cat-tag-health   { background: rgba(143, 184, 186, 0.15); color: #a5c4c6; }
+
+
+/* Lowercase category tags to reduce visual noise */
+.cat-tag {
+  text-transform: none !important;
+  letter-spacing: 0.02em !important;
+  font-family: var(--font-sans) !important;
+  font-weight: 500 !important;
+  font-size: 0.68rem !important;
+}
+
+
+/* Timeline on mobile: keep the header (and scroll-to-today button) visible */
+@media (max-width: 768px) {
+  .page-head {
+    position: sticky;
+    top: 0;
+    background: var(--bg);
+    z-index: 40;
+    padding-top: 8px;
+    padding-bottom: 12px;
+    margin-bottom: 12px;
+    border-bottom: 1px solid var(--hairline);
+  }
+  #scroll-today-btn {
+    display: inline-flex;
+  }
 }

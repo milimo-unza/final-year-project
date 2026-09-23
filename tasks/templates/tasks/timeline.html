@@ -44,7 +44,7 @@
                   <div class="task-title">
                     <a href="{% url 'task_edit' t.pk %}" data-modal="task-edit">{{ t.title }}</a>
                     <span class="dot-priority dot-{{ t.priority }}" title="{{ t.get_priority_display }}"></span>
-                    <span class="pill {{ t.priority }} desktop-only">{{ t.get_priority_display }}</span>
+                    <span class="cat-tag cat-tag-{{ t.category }} desktop-only">{{ t.category|cat_label:category_labels }}</span>
                   </div>
                   <div class="task-meta">
                     {% if t.due_date %}{{ t.due_date|date:"H:i" }}{% if t.duration_minutes %}<span class="sep">·</span>{{ t.duration_minutes }}m{% endif %}{% endif %}
@@ -73,19 +73,13 @@
 {% block scripts %}
 <script>
 (function () {
-  var scrollEl = document.getElementById('timeline-scroll');
-  var anchor   = document.getElementById('today-anchor');
-  var btn      = document.getElementById('scroll-today-btn');
-  if (!scrollEl || !anchor) return;
+  var anchor = document.getElementById('today-anchor');
+  var btn    = document.getElementById('scroll-today-btn');
+  if (!anchor || !btn) return;
 
-  // Scroll to today on first load (no animation, feels instant).
-  function scrollToToday(smooth) {
-    var top = anchor.offsetTop - scrollEl.offsetTop;
-    scrollEl.scrollTo({ top: Math.max(0, top - 8), behavior: smooth ? 'smooth' : 'auto' });
-  }
-  setTimeout(function () { scrollToToday(false); }, 50);
-
-  btn.addEventListener('click', function () { scrollToToday(true); });
+  btn.addEventListener('click', function () {
+    anchor.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  });
 })();
 </script>
 {% endblock %}

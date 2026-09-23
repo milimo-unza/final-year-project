@@ -12,7 +12,7 @@
     <div class="task-title">
       <a href="{% url 'task_edit' t.pk %}" data-modal="task-edit">{{ t.title }}</a>
       <span class="dot-priority dot-{{ t.priority }}" title="{{ t.get_priority_display }}"></span>
-      <span class="pill {{ t.priority }} desktop-only">{{ t.get_priority_display }}</span>
+      <span class="cat-tag cat-tag-{{ t.category }} desktop-only">{{ t.category|cat_label:category_labels }}</span>
     </div>
     <div class="task-meta">
       {% if t.due_date %}{{ t.due_date|date:"H:i" }}{% if t.duration_minutes %}<span class="sep">·</span>{{ t.duration_minutes }}m{% endif %}{% endif %}
