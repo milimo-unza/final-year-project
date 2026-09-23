@@ -2461,3 +2461,50 @@ html { font-size: 130% !important; }
     font-size: 1rem;
   }
 }
+
+
+/* Kill the old floating Today button (no longer in the DOM but safe to remove) */
+.floating-today-btn { display: none !important; }
+
+/* Timeline header scroll button */
+#scroll-today-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--muted-fg);
+  font-size: 1rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  padding: 0;
+}
+#scroll-today-btn:hover {
+  background: var(--muted-bg);
+  color: var(--fg);
+  border-color: var(--muted-fg);
+}
+
+/* Mobile: cards fit and page doesn't need horizontal or awkward scroll */
+@media (max-width: 640px) {
+  .main { padding: 20px 14px 90px; }
+  .card { padding: 14px; }
+  .card + .card { margin-top: 14px; }
+
+  /* Let the timeline scroll a natural amount - fits most phone viewports */
+  .timeline-scroll { max-height: 62vh; }
+
+  /* Today dashboard: shorter scroll boxes */
+  .task-scroll { max-height: none; }
+  .dashboard-list { max-height: 55vh; }
+
+  /* Row padding tighter */
+  .task-row { padding: 10px 0; }
+  .page-head { margin-bottom: 18px; }
+  .page-head .titles h1 { font-size: 1.4rem; }
+  .page-head .titles .meta { font-size: 0.72rem; }
+  .page-head .row-flex { gap: 6px; flex-wrap: wrap; }
+  .page-head .btn { padding: 7px 12px; font-size: 0.78rem; }
+}

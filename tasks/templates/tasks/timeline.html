@@ -9,6 +9,7 @@
     <div class="meta">All your tasks in chronological order. Past → Today → Tomorrow → Future.</div>
   </div>
   <div class="row-flex">
+    <button type="button" class="icon-btn" id="scroll-today-btn" title="Scroll to today" aria-label="Scroll to today">◎</button>
     <a class="btn btn-sm" href="{% url 'timeline_export_csv' %}" title="Download all tasks as CSV">↓ Export CSV</a>
     <a class="btn btn-primary" href="{% url 'task_create' %}" data-modal="task-new">+ New task</a>
   </div>
@@ -74,25 +75,15 @@
 (function () {
   var scrollEl = document.getElementById('timeline-scroll');
   var anchor   = document.getElementById('today-anchor');
+  var btn      = document.getElementById('scroll-today-btn');
   if (!scrollEl || !anchor) return;
 
-  // Scroll to today on initial load.
+  // Scroll to today on first load (no animation, feels instant).
   function scrollToToday(smooth) {
     var top = anchor.offsetTop - scrollEl.offsetTop;
     scrollEl.scrollTo({ top: Math.max(0, top - 8), behavior: smooth ? 'smooth' : 'auto' });
   }
   setTimeout(function () { scrollToToday(false); }, 50);
-
-  function update() {
-    var anchorTop = anchor.offsetTop - scrollEl.offsetTop;
-    var viewTop = scrollEl.scrollTop;
-    var viewBottom = viewTop + scrollEl.clientHeight;
-    var visible = anchorTop >= viewTop - 4 && anchorTop <= viewBottom - 20;
-    btn.hidden = visible;
-  }
-  scrollEl.addEventListener('scroll', update);
-  window.addEventListener('resize', update);
-  setTimeout(update, 200);
 
   btn.addEventListener('click', function () { scrollToToday(true); });
 })();
