@@ -641,44 +641,48 @@
 
     var body = document.getElementById('logtime-modal-body');
     if (!body) return;
-    body.innerHTML = '<div class="modal-loading">Loading...</div>';
+    body.innerHTML = '<div class="modal-loading">Loading…</div>';
     openModal('logtime-modal');
 
-    fetch(url, { credentials: 'same-origin', headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+    var fetchUrl = url + (url.indexOf('?') >= 0 ? '&' : '?') + 'embed=1';
+
+    fetch(fetchUrl, {
+      credentials: 'same-origin',
+      headers: { 'X-Requested-With': 'XMLHttpRequest' }
+    })
       .then(function (r) { return r.text(); })
       .then(function (html) {
         var temp = document.createElement('div');
         temp.innerHTML = html;
-        var form = temp.querySelector('form.form-grid') || temp.querySelector('form');
-        if (form) {
-          body.innerHTML = '';
-          body.appendChild(form);
-          // Also grab the descriptive paragraph if present
-          var desc = temp.querySelector('.card > p');
-          if (desc) body.insertBefore(desc, body.firstChild);
-
-          form.addEventListener('submit', function (ev) {
-            ev.preventDefault();
-            var data = new FormData(form);
-            fetch(form.action || window.location.pathname, {
-              method: 'POST', body: data, credentials: 'same-origin',
-              headers: { 'X-Requested-With': 'XMLHttpRequest' },
-            })
-              .then(function (r) {
-                try { sessionStorage.setItem('harpr-pending-toasts', JSON.stringify([{ message: 'Time logged', kind: 'success' }])); } catch (err) {}
-                window.location.reload();
-              })
-              .catch(function () { window.location.reload(); });
-          });
-        } else {
+        // Only accept the modal-specific form — never fall back to a bare <form>.
+        var form = temp.querySelector('form.log-time-form');
+        if (!form) {
           body.innerHTML = '<div class="empty">Could not load form.</div>';
+          return;
         }
+        body.innerHTML = '';
+        body.appendChild(form);
+
+        form.addEventListener('submit', function (ev) {
+          ev.preventDefault();
+          var data = new FormData(form);
+          fetch(form.action, {
+            method: 'POST',
+            body: data,
+            credentials: 'same-origin',
+            headers: { 'X-Requested-With': 'XMLHttpRequest' },
+          })
+            .then(function () {
+              queueToast('Time logged', 'success');
+              window.location.reload();
+            })
+            .catch(function () { window.location.reload(); });
+        });
       })
       .catch(function () {
         body.innerHTML = '<div class="empty">Could not load form.</div>';
       });
   });
-
 
   // ---------- expose -------------------------------------------------------
 

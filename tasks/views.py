@@ -81,13 +81,26 @@ def dashboard(request):
     from django.db.models import Sum as _Sum
     from datetime import timedelta as _td
 
+    # --- Analytics: all three charts share a 7-day window ---------------
+    from django.db.models import Sum as _Sum
+    from datetime import timedelta as _td
+
+    _today = timezone.localdate()
+    week_start_date = _today - _td(days=6)
+    week_start_dt = timezone.make_aware(
+        datetime.combine(week_start_date, datetime.min.time()),
+        timezone.get_current_timezone(),
+    )
+
+    _cat_labels = UserSettings.for_user(user).category_labels()
+
+    # Pie: minutes per category, last 7 days
     cat_totals = (
         TimeLog.objects
-        .filter(user=user)
+        .filter(user=user, logged_at__gte=week_start_dt)
         .values("task__category")
         .annotate(total=_Sum("minutes"))
     )
-    _cat_labels = UserSettings.for_user(user).category_labels()
     cat_data = {}
     for row in cat_totals:
         key = row["task__category"] or "other"
@@ -95,7 +108,7 @@ def dashboard(request):
     pie_labels = [_cat_labels.get(k, k.title()) for k in cat_data.keys()]
     pie_values = list(cat_data.values())
 
-    _today = timezone.localdate()
+    # Line: minutes logged per day, last 7 days
     day_labels = []
     day_values = []
     for i in range(6, -1, -1):
@@ -108,17 +121,37 @@ def dashboard(request):
         )
         day_values.append(total)
 
+    # Bar: completed vs pending per category, restricted to tasks
+    # completed in the last 7 days OR currently pending.
     bar_labels = []
     bar_done = []
     bar_pending = []
     for key in ("work", "study", "personal", "health"):
         label = _cat_labels.get(key, key.title())
         bar_labels.append(label)
-        bar_done.append(Task.objects.filter(user=user, category=key, completed=True).count())
-        bar_pending.append(Task.objects.filter(user=user, category=key, completed=False).count())
+        bar_done.append(
+            Task.objects.filter(
+                user=user, category=key, completed=True,
+                completed_at__gte=week_start_dt,
+            ).count()
+        )
+        bar_pending.append(
+            Task.objects.filter(
+                user=user, category=key, completed=False,
+            ).count()
+        )
 
-    total_minutes = TimeLog.objects.filter(user=user).aggregate(s=_Sum("minutes"))["s"] or 0
-    total_completed = Task.objects.filter(user=user, completed=True).count()
+    # Headline KPI numbers — same 7-day window for consistency.
+    total_minutes = (
+        TimeLog.objects
+        .filter(user=user, logged_at__gte=week_start_dt)
+        .aggregate(s=_Sum("minutes"))["s"] or 0
+    )
+    total_completed = (
+        Task.objects
+        .filter(user=user, completed=True, completed_at__gte=week_start_dt)
+        .count()
+    )
 
     return render(request, "tasks/dashboard.html", {
         "todays_pending": todays_pending,
@@ -540,7 +573,7 @@ from .forms import LogTimeForm  # noqa: E402
 
 @login_required
 def log_time(request, pk):
-    """Log time spent on a task. Small form, POST-only in practice."""
+    """Log time spent on a task. Supports ?embed=1 for the modal fragment."""
     task = get_object_or_404(Task, pk=pk, user=request.user)
     if request.method == "POST":
         form = LogTimeForm(request.POST)
@@ -553,10 +586,13 @@ def log_time(request, pk):
             return redirect(request.POST.get("next") or "dashboard")
     else:
         form = LogTimeForm()
-    return render(request, "tasks/log_time.html", {
-        "form": form,
-        "task": task,
-    })
+
+    template = (
+        "tasks/_log_time_inner.html"
+        if request.GET.get("embed") == "1"
+        else "tasks/log_time.html"
+    )
+    return render(request, template, {"form": form, "task": task})
 
 @login_required
 @require_POST
@@ -567,38 +603,6 @@ def delete_time_log(request, pk):
     entry.delete()
     messages.info(request, "Time entry removed")
     return redirect(request.POST.get("next") or "task_edit", pk=task_pk)
-
-# --- Time logging ------------------------------------------------------------
-
-from .forms import LogTimeForm  # noqa: E402
-
-
-@login_required
-def log_time(request, pk):
-    task = get_object_or_404(Task, pk=pk, user=request.user)
-    if request.method == "POST":
-        form = LogTimeForm(request.POST)
-        if form.is_valid():
-            entry = form.save(commit=False)
-            entry.user = request.user
-            entry.task = task
-            entry.save()
-            messages.success(request, "Logged %d min on '%s'" % (entry.minutes, task.title))
-            return redirect(request.POST.get("next") or "dashboard")
-    else:
-        form = LogTimeForm()
-    return render(request, "tasks/log_time.html", {"form": form, "task": task})
-
-
-@login_required
-@require_POST
-def delete_time_log(request, pk):
-    entry = get_object_or_404(TimeLog, pk=pk, user=request.user)
-    task_pk = entry.task_id
-    entry.delete()
-    messages.info(request, "Time entry removed")
-    return redirect("task_edit", pk=task_pk)
-
 
 
 # --- Activity log ------------------------------------------------------------

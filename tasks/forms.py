@@ -130,34 +130,3 @@ class LogTimeForm(forms.ModelForm):
         if commit:
             instance.save()
         return instance
-
-class LogTimeForm(forms.ModelForm):
-    """Log time spent on a task."""
-    hours = forms.IntegerField(min_value=0, max_value=23, required=False, initial=0)
-    minutes_part = forms.IntegerField(min_value=0, max_value=59, required=False, initial=0)
-
-    class Meta:
-        model = TimeLog
-        fields = ("note",)
-        widgets = {
-            "note": forms.TextInput(attrs={"placeholder": "Optional note", "maxlength": 200}),
-        }
-
-    def clean(self):
-        cleaned = super().clean()
-        h = cleaned.get("hours") or 0
-        m = cleaned.get("minutes_part") or 0
-        total = h * 60 + m
-        if total <= 0:
-            raise forms.ValidationError("Please enter a duration greater than zero.")
-        cleaned["minutes"] = total
-        return cleaned
-
-    def save(self, commit=True):
-        instance = super().save(commit=False)
-        instance.minutes = self.cleaned_data["minutes"]
-        if commit:
-            instance.save()
-        return instance
-
-
