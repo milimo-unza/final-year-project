@@ -1,4 +1,4 @@
-# Harpr - User Manual
+# Harpr — User Manual
 
 A guide to using Harpr. Every screen is covered, in the order you'll
 encounter it.
@@ -16,7 +16,7 @@ encounter it.
 Already have an account? Sign in with your username and password.
 
 You can sign out at any time using the **⏻** icon at the bottom of the
-sidebar (desktop) or from the **Settings** screen (mobile).
+sidebar.
 
 ---
 
@@ -25,23 +25,23 @@ sidebar (desktop) or from the **Settings** screen (mobile).
 The Today page is deliberately focused on what you need right now. From
 top to bottom:
 
-- **Quick add bar** - type a title and press Enter to create a task.
+- **Quick add bar** — type a title and press Enter to create a task.
   Natural language works: "Pay rent tomorrow", "Meeting Friday 3pm". If
   a date is detected, it goes on the task automatically.
-- **Overdue** - tasks that were due before today and aren't done yet.
+- **Overdue** — tasks that were due before today and aren't done yet.
   Each has a small arrow button to push it to today. This section only
   appears if there's something overdue.
-- **Today** - pending tasks due today, sorted by time.
-- **Tomorrow** - a preview of what's due tomorrow.
-- **Someday** - tasks with no due date. They sit here until you give them one.
+- **Today** — pending tasks due today, sorted by time.
+- **Tomorrow** — a preview of what's due tomorrow.
+- **Someday** — tasks with no due date. They sit here until you give them one.
 
 On the right column:
 
-- **Pending count** - open tasks in total.
-- **Insights** - three charts with tabs to switch between them. Time per
+- **Pending count** — open tasks in total.
+- **Insights** — three charts with tabs to switch between them. Time per
   category, activity over the last week, and completed vs pending tasks
   per category. Harpr remembers which chart you looked at last.
-- **Recently completed** - the last five tasks you finished.
+- **Recently completed** — the last five tasks you finished.
 
 Click any task title to open the edit modal.
 
@@ -55,13 +55,13 @@ on the Today page.
 Fields:
 
 - **Title** (required)
-- **When** - date picker, plus hour and minute dropdowns in 24-hour
+- **When** — date picker, plus hour and minute dropdowns in 24-hour
   format. Minute steps are 5 minutes. Leave the date empty to send the
   task to Someday.
-- **Duration (minutes)** - optional, used to compute an end time.
-- **Category** - Work, Study, Personal, or Health.
-- **Priority** - High, Medium, or Low.
-- **Reminder** - currently unused. Will be removed.
+- **Duration (minutes)** — optional, used to compute an end time.
+- **Category** — Work, Study, Personal, or Health.
+- **Priority** — High, Medium, or Low.
+- **Reminder** — currently unused. Will be removed.
 
 Click **Add task** (or **Save** when editing). A small toast appears in
 the corner confirming the action.
@@ -80,10 +80,10 @@ You can always override the date manually afterwards.
 
 ### Complete, edit, delete
 
-- **Complete** - click the circle on the left of any task row. On the
+- **Complete** — click the circle on the left of any task row. On the
   dashboard, the row disappears because completed tasks aren't pending.
-- **Edit** - click the task title. The edit modal opens.
-- **Delete** - from inside the edit modal, click Delete. A confirmation
+- **Edit** — click the task title. The edit modal opens.
+- **Delete** — from inside the edit modal, click Delete. A confirmation
   appears. Once confirmed the task is gone.
 
 ---
@@ -101,10 +101,10 @@ You can always override the date manually afterwards.
 Each task shows its time, duration if set, and priority dot. Click a task
 to open the edit modal.
 
-**Scroll-to-today button** - the circular icon in the page header scrolls
+**Scroll-to-today button** — the circular icon in the page header scrolls
 back to today when you've scrolled away.
 
-**Export CSV** - downloads `harpr_tasks.csv` with every task in a
+**Export CSV** — downloads `harpr_tasks.csv` with every task in a
 spreadsheet format.
 
 ---
@@ -114,16 +114,16 @@ spreadsheet format.
 The **Calendar** page has three views, switchable with the buttons in
 the toolbar:
 
-- **Month** - a grid. Each day shows coloured chips for its tasks, up to
+- **Month** — a grid. Each day shows coloured chips for its tasks, up to
   three per day. Days with more than three show a "+N more" link.
-- **Week** - seven columns, one per day, with all tasks listed. Sunday
+- **Week** — seven columns, one per day, with all tasks listed. Sunday
   to Saturday.
-- **List** - a chronological list of upcoming days and their tasks.
+- **List** — a chronological list of upcoming days and their tasks.
 
 Navigate with the **‹**, **·**, and **›** buttons. Click any day to open
 a modal with that day's full task list.
 
-Category colours (all muted, muted palette):
+Category colours (muted palette):
 
 - Work: soft blue
 - Study: soft purple
@@ -151,18 +151,19 @@ on the Today page uses this data.
 The Insights card sits in the right column of the Today page. It has
 three tabs:
 
-- **Pie** - time logged per category
-- **Activity** - minutes logged per day, last seven days
-- **Tasks** - completed vs pending per category
+- **Pie** — time logged per category
+- **Activity** — minutes logged per day, last seven days
+- **Tasks** — completed vs pending per category
 
-Switching tabs is instant. The choice persists across sessions.
+All three show the last seven days. Switching tabs is instant. The
+choice persists across sessions.
 
 ---
 
 ## 8. Activity log
 
-Every action you take on a task - created, edited, completed, re-opened,
-deleted - is recorded. The last 30 are visible from the Activity link in
+Every action you take on a task — created, edited, completed, re-opened,
+deleted — is recorded. The last 30 are visible from the Activity link in
 the sidebar.
 
 ---
@@ -193,7 +194,7 @@ a single column. Text is sized for the viewport.
 
 ## 12. Tips
 
-- Use the quick add bar for anything you think of in the moment - you
+- Use the quick add bar for anything you think of in the moment — you
   can always edit details later.
 - Set a duration on tasks you actually want to track. Tasks without a
   duration can still have time logged against them, but you won't see an
@@ -201,4 +202,4 @@ a single column. Text is sized for the viewport.
 - The Timeline's CSV export is useful for putting together a report or
   reviewing what you've done over a period.
 - If something looks wrong after an edit, reload the page. Every list
-  reflects the database on page load.
+  reflects the database on page

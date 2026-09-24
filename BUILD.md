@@ -1,176 +1,104 @@
-# Build Document — Harpr (Time & Activity Planner)
+# Build Log — Harpr
 
-**Author**: Milimo Kasamba Mukkuli
-**Programme**: BSc Computer Science, University of Zambia
-**Supervisor**: Prof. J. Phiri
-**Project duration**: 16 weeks core build + a v1.1 polish sprint
+**Author:** Milimo Kasamba Mukkuli (2021515567)
+**Programme:** BSc Computer Science, University of Zambia
+**Supervisor:** Prof. J. Phiri
+**Period:** April 2026 – September 2026
 
-This document is my honest account of how I built Harpr. The first
-seven chapters cover the original eight-week build (when the project was
-still codenamed *Cosmos AI Planner*). Chapter 8 covers the v1.1 sprint that
-rebranded the app to **Harpr** and added twelve new features after my
-supervisor's mid-project review.
+This is a record of how I built Harpr, week by week. Most of it was
+written during the build, from notes I kept as I went. The last two
+sections were tidied up after the project was done, so they read a bit
+more carefully than the earlier ones.
 
 ---
 
-## Week 1 — Setting up Django and authentication
+## Week 1 — Setting up Django and accounts
 
-I started by installing Python 3.11 and creating a fresh Django 5.2 project
-called `timeplanner`. I picked Django because the built-in admin, auth, and
-ORM are exactly what a one-person project needs — no third-party packages to
-keep up with. I went with SQLite because it ships with Python and a one-file
-database is easy to back up and submit with my report.
+I installed Python 3.13 and started a Django project. I picked Django
+because the auth system, admin, ORM, and migrations come built in — for
+a one-person project I didn't want to spend time evaluating libraries.
 
 ```bash
-pip install Django whitenoise
 django-admin startproject timeplanner .
 python manage.py startapp accounts
 python manage.py startapp tasks
 ```
 
-Authentication came next. Instead of writing my own user system I used
-`django.contrib.auth` — `LoginView`, `LogoutView`, and a thin custom
-`register` view that wraps `UserCreationForm` and adds an email field.
+For accounts I used Django's built-in `LoginView` and `LogoutView`, and
+wrote one small `register` view that wraps `UserCreationForm` and adds an
+email field.
 
-```python
-# accounts/forms.py
-class RegisterForm(UserCreationForm):
-    email = forms.EmailField(required=True)
+Things that went wrong:
 
-    class Meta:
-        model = User
-        fields = ("username", "email", "password1", "password2")
-```
-
-Routing the three URLs took five minutes:
-
-```python
-# accounts/urls.py
-path("login/",    auth_views.LoginView.as_view(template_name="accounts/login.html"),  name="login"),
-path("logout/",   auth_views.LogoutView.as_view(next_page="login"),                   name="logout"),
-path("register/", views.register,                                                     name="register"),
-```
-
-I set `LOGIN_URL`, `LOGIN_REDIRECT_URL`, and `LOGOUT_REDIRECT_URL` in settings
-so unauthenticated users always end up on the login page.
-
-**Challenge:** my first login template was the default Django one and looked
-ugly. I parked the styling for week 6 and pressed on with functionality.
+- Project name typo (`timeplanner` vs `timeplanner`) — fixed with `sed`.
+- Forgot to activate the venv the first time. Learned to always run
+`source .venv/bin/activate` first.
+- `__str__` vs `_str__` in the model — Python didn't complain until I
+tried to print a task.
 
 ---
 
 ## Week 2 — The Task model and CRUD
 
-Two simple models. No fancy relationships beyond a `ForeignKey` to `User`
-and one from `TimeLog` to `Task`.
+One model to start: `Task`. Title, description, due date, category,
+priority, completed flag, user foreign key.
 
-```python
-# tasks/models.py
+```
 class Task(models.Model):
-    CATEGORY_CHOICES = [("work","Work"),("study","Study"),
-                        ("personal","Personal"),("health","Health")]
-    PRIORITY_CHOICES = [("high","High"),("medium","Medium"),("low","Low")]
-
-    user        = models.ForeignKey(User, on_delete=models.CASCADE, related_name="tasks")
-    title       = models.CharField(max_length=200)
+    CATEGORY_CHOICES = [
+        ("work", "Work"), ("study", "Study"),
+        ("personal", "Personal"), ("health", "Health"),
+    ]
+    PRIORITY_CHOICES = [
+        ("high", "High"), ("medium", "Medium"), ("low", "Low"),
+    ]
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="tasks")
+    title = models.CharField(max_length=200)
     description = models.TextField(blank=True)
-    due_date    = models.DateTimeField(null=True, blank=True)
-    category    = models.CharField(max_length=20, choices=CATEGORY_CHOICES, default="work")
-    priority    = models.CharField(max_length=10, choices=PRIORITY_CHOICES, default="medium")
-    completed   = models.BooleanField(default=False)
-    created_at  = models.DateTimeField(auto_now_add=True)
-    updated_at  = models.DateTimeField(auto_now=True)
+    due_date = models.DateTimeField(null=True, blank=True)
+    category = models.CharField(max_length=20, choices=CATEGORY_CHOICES, default="work")
+    priority = models.CharField(max_length=10, choices=PRIORITY_CHOICES, default="medium")
+    completed = models.BooleanField(default=False)
 ```
 
-For CRUD I used **function-based views** (FBVs) — they read top-to-bottom
-which is easier when explaining the project to my supervisor. Each view is
-guarded with `@login_required` and starts with
-`Task.objects.filter(user=request.user, ...)` so users only see their own data.
+I used function-based views, not class-based. They read top-to-bottom,
+which is easier when explaining the code to someone else.
 
-```python
-@login_required
-def task_create(request):
-    if request.method == "POST":
-        form = TaskForm(request.POST)
-        if form.is_valid():
-            task = form.save(commit=False)
-            task.user = request.user
-            task.save()
-            return redirect("task_list")
-    else:
-        form = TaskForm()
-    return render(request, "tasks/task_form.html", {"form": form})
+Every view starts with a query scoped to `request.user`:
+
+```
+Task.objects.filter(user=request.user)
 ```
 
-Filtering pending vs completed is just a query-string check (`?status=pending`)
-so I didn't have to invent a routing scheme.
-
-**Challenge:** `due_date` as a `DateTimeField` initially didn't pre-populate the
-edit form correctly — the HTML5 `datetime-local` input expects
-`YYYY-MM-DDTHH:MM`. Fixed by setting both `widget format` and
-`input_formats` on the form field.
+No path returns another user's data. This was the first thing I checked
+before adding anything else.
 
 ---
 
-## Week 3 — Calendar with FullCalendar.js
+## Week 3 — Calendar
 
-I needed a monthly view but didn't want to build it from scratch.
-**FullCalendar 6** is free, has a nice JSON-feed pattern, and loads from a CDN
-so I don't have to manage another build tool.
+I used FullCalendar 6 from a CDN. One Django view returns JSON:
+holidays plus a per-day task map. On the client, instead of letting
+FullCalendar render its own event chips, I inject my own chips inside
+each day cell using `dayCellDidMount`. That gives me control over the
+colour-by-category look.
 
-The page is plain HTML with a `<div id="calendar"></div>`. Initialisation lives
-in `static/js/calendar.js`:
+The first version double-rendered chips on month change because
+`datesSet` and `eventsSet` both fire and both were calling `injectChips`.
+Fix: wrap the injection in `setTimeout(..., 0)` so it runs after the
+DOM settles, and check for an existing chip stack before adding a new one.
 
-```javascript
-var cal = new FullCalendar.Calendar(el, {
-  initialView: 'dayGridMonth',
-  events: '/calendar/events/',  // Django JSON feed
-  ...
-});
-cal.render();
-```
-
-The Django side is a single view that returns a list of dicts:
-
-```python
-@login_required
-def calendar_events(request):
-    qs = Task.objects.filter(user=request.user, due_date__isnull=False)
-    events = []
-    for t in qs:
-        events.append({
-            "id": t.id, "title": t.title,
-            "start": t.due_date.isoformat(),
-            "color": CATEGORY_COLORS[t.category],
-            "url": f"/tasks/{t.id}/edit/",
-        })
-    return JsonResponse(events, safe=False)
-```
-
-Each task is colour-coded by category. Clicking an event jumps to its edit page.
-
-**Challenge:** my first attempt used the FullCalendar npm package — I gave up
-quickly when I realised I'd need a bundler. The CDN version dropped in cleanly.
+Clicking a day opens a modal with that day's tasks. Same AJAX toggle
+used on the dashboard and timeline — one function, three places.
 
 ---
 
-## Week 4 — Time tracking (TimeLog)
+## Week 4 — Time tracking
 
-`TimeLog` is even simpler than `Task`:
+`TimeLog` stores a single integer `minutes` value. The form exposes two
+number inputs — hours and minutes — and combines them in `clean()`:
 
-```python
-class TimeLog(models.Model):
-    user      = models.ForeignKey(User, on_delete=models.CASCADE, related_name="time_logs")
-    task      = models.ForeignKey(Task, on_delete=models.CASCADE, related_name="time_logs")
-    minutes   = models.PositiveIntegerField()
-    note      = models.CharField(max_length=200, blank=True)
-    logged_at = models.DateTimeField(auto_now_add=True)
 ```
-
-The form has two number inputs (Hours and Minutes), and I combine them in
-`clean()` so the model still stores a single integer:
-
-```python
 def clean(self):
     cleaned = super().clean()
     h = cleaned.get("hours") or 0
@@ -182,558 +110,268 @@ def clean(self):
     return cleaned
 ```
 
-The Timeline page is the chronological list of these logs.
-The dashboard's "time logged today" stat uses `Sum("minutes")` over today's logs.
-
-**Challenge:** I forgot to scope the `task` dropdown to the current user, so
-the log form was showing every task in the database. Fixed by overriding the
-form's `__init__` to take a `user` argument.
+The form dropdown for the `task` field initially showed every task in the
+database, not just the current user's. Fixed by overriding the form's
+`__init__` to take a `user` argument and filter.
 
 ---
 
-## Week 5 — Charts (Chart.js)
+## Week 5 — Charts
 
-The analytics page has three charts. Each gets its data from the **same**
-context dict, serialised with Django's `json_script` template tag:
+Three charts on the dashboard, drawn with Chart.js 4. Aggregations happen
+server-side in the view and are handed to the template as JSON:
 
-```html
-{{ chart_data|json_script:"chart-data" }}
-<script>
-var data = JSON.parse(document.getElementById('chart-data').textContent);
-new Chart(document.getElementById('lineChart'), { ... });
-</script>
+```
+cat_totals = (
+    TimeLog.objects
+    .filter(user=user)
+    .values("task__category")
+    .annotate(total=Sum("minutes"))
+)
 ```
 
-Aggregations happen server-side in the view, using Django's ORM:
+Keeping the aggregation server-side means the client only draws — no raw
+log data leaves the server.
 
-```python
-# Pie: minutes per category
-cat_rows = (TimeLog.objects.filter(user=user)
-            .values("task__category")
-            .annotate(total=Sum("minutes")))
-
-# Line: last 7 days of minutes
-for i in range(6, -1, -1):
-    day_start = start_of_today - timedelta(days=i)
-    total = TimeLog.objects.filter(user=user,
-        logged_at__gte=day_start,
-        logged_at__lt=day_start + timedelta(days=1)
-    ).aggregate(s=Sum("minutes"))["s"] or 0
-```
-
-I deliberately kept the bar chart at completed-vs-pending per category rather
-than a percentage, so an empty category shows zero (rather than a misleading
-0% with no context).
-
-**Challenge:** my first version of the daily line chart showed weeks in the
-wrong order because I was sorting strings. Fixed by building the labels from
-the same `datetime` objects used in the query.
+First version of the daily line chart showed the wrong order because I was
+sorting stringified dates. Fixed by building the labels from the same
+`datetime` objects used in the query.
 
 ---
 
-## Week 6 — Design (the "Mono Grid" theme)
+## Week 6 — Design
 
-Up to this point everything looked like default browser HTML. I'd been keeping
-my eye on a clean monochromatic dashboard look — hairline borders, monospace
-numerals, a single accent colour — so I built it as one CSS file.
+All the CSS lives in one file. Colours are CSS custom properties on
+`:root`, and dark mode overrides them under `[data-theme="dark"]`:
 
-```css
+```
 :root {
-  --bg: hsl(0 0% 100%);
-  --fg: hsl(240 6% 10%);
-  --border: hsl(240 6% 90%);
-  --accent: hsl(161 94% 30%);   /* emerald-600 */
-  --font-mono: 'JetBrains Mono', ui-monospace, monospace;
-  ...
+  --bg:         #eceae3;
+  --fg:         #2b2823;
+  --card:       #fbf9f4;
+  --border:     #d9d4c6;
+  --accent:     #b5623e;
 }
-[data-theme="dark"] { --bg: hsl(240 10% 4%); ... }
+
+[data-theme="dark"] {
+  --bg:         #1c1a17;
+  --fg:         #ebe7dd;
+  --accent:     #d17a55;
+}
 ```
 
-Every component (KPI grid, task row, sidebar, button, form input) consumes
-those variables, so dark mode is just a matter of overriding the same handful
-of CSS custom properties under `[data-theme="dark"]`. The toggle lives in the
-sidebar footer:
+Dark mode is a `data-theme` attribute on `<html>`, saved in `localStorage`,
+and read by an inline script in `<head>` before the page paints — so there's
+no flash of light theme on a dark refresh.
 
-```javascript
-btn.addEventListener('click', function () {
-  var cur  = document.documentElement.getAttribute('data-theme');
-  var next = cur === 'dark' ? 'light' : 'dark';
-  document.documentElement.setAttribute('data-theme', next);
-  localStorage.setItem('cosmos-theme', next);
-});
-```
-
-A small inline script in `<head>` reads `localStorage` *before* paint to avoid
-the flash-of-wrong-theme on every refresh.
-
-I used **Inter** for body text and **JetBrains Mono** for numbers and metadata
-— both via Google Fonts, no `npm` involved.
-
-**Challenge:** my first dashboard layout used `<table>` and rendered fine on
-my laptop but cramped on my phone. Refactored everything to CSS Grid with
-`grid-template-columns: repeat(4, 1fr)` and a media query that collapses to two
-columns under 880px.
+The first dashboard used a `<table>` and looked fine on my laptop but
+cramped on my phone. I rewrote the layout with CSS Grid and a few media
+queries.
 
 ---
 
-## Week 7 — Testing and debugging
+## Week 7 — Bug fixing and a smoke test
 
-I wrote a small smoke-test script that logs in as a fixture user and `GET`s
-every URL, asserting status 200:
+Wrote a small test that logs in and GETs every URL:
 
-```python
+```
 c = Client()
-c.login(username='milimo', password='cosmos123')
-for u in ['/', '/tasks/', '/calendar/', '/calendar/events/',
-          '/log/', '/timeline/', '/analytics/']:
+c.login(username="milimo", password="milimo")
+for u in ["/", "/timeline/", "/calendar/", "/calendar/events/", "/activity-log/"]:
     assert c.get(u).status_code == 200
 ```
 
-Bugs I found and fixed:
+Bugs found:
 
-1. **`due_date` was not displayed in the edit form** — wrong widget format
-   string. Fixed in `tasks/forms.py`.
-2. **The dashboard's "time logged today" KPI tried to do arithmetic in
-   templates** (Django templates don't support `//` and `%`). I moved the
-   formatting to plain "X min" rather than splitting into hours/minutes.
-3. **CSRF blocked POST from the Replit preview iframe** — added
-   `https://*.replit.dev` to `CSRF_TRUSTED_ORIGINS`.
-4. **The preview iframe blocked the page** because Django sets
-   `X-Frame-Options: DENY` by default. I removed `XFrameOptionsMiddleware`
-   from `MIDDLEWARE`. (This is fine for development; in production we'd add
-   the middleware back and use `@xframe_options_exempt` only where needed.)
-
-I also seeded a few tasks and time logs so my screenshots in the report show
-realistic data instead of empty states.
+1. `due_date` didn't prepopulate when editing. The widget format didn't
+match what HTML5's `datetime-local` expects. Fixed by splitting the
+field into three form fields (date, hour, minute) and recombining them
+in `clean()`.
+2. CSRF blocked POST from the Replit preview iframe. Added `*.replit.dev`
+to `CSRF_TRUSTED_ORIGINS`.
+3. `X-Frame-Options: DENY` blocked the preview entirely. I removed
+`XFrameOptionsMiddleware`. That's fine for development; a production
+deploy would need to add it back with a targeted exception.
 
 ---
 
-## Other challenges and what I'd do differently
+## Weeks 8–10 — Feature sprint and rebrand
 
-**Picking a CSS framework.** I started with Bootstrap, replaced it with
-Tailwind CDN, and finally dropped both because the design I wanted (hairline
-borders, mono numerals, emerald accent) was easier to maintain as plain CSS
-custom properties. About 600 lines of CSS in one file is a lot less than the
-megabyte of utility classes Tailwind would have shipped.
+The app was originally called "Cosmos AI Planner". That name promised an
+AI it didn't have, so I renamed it. **Harpr** is a deliberate misspelling
+of *harp* — each task is a string in your day's chord.
 
-**Time zones.** I set `TIME_ZONE = "Africa/Lusaka"` and `USE_TZ = True`. The
-calendar, timeline, and "today" filters all behave naturally as a result.
+The rebrand touched every template. I added a context processor so
+`APP_NAME` and `APP_TAGLINE` are available everywhere instead of hard-coding
+"Harpr" in every file.
 
-**Future work I deliberately skipped at v1.0:**
+Two features landed in this sprint that are still in the app:
 
-- An AI assistant powered by Gemini for chat-based planning.
-- WhatsApp reminders via Twilio.
-- A mobile app.
+**Modals for task create/edit.** A click on a button with
+`data-modal="task-new"` or `data-modal="task-edit"` is intercepted by
+JavaScript. The URL is fetched, the form is lifted out of the response,
+and it's injected into a modal. Submitting is also intercepted, POSTed
+via `fetch`, and on success the page reloads with a small toast queued.
 
-Each of those is enough work for its own dissertation.
+**Toasts.** Small notifications in the bottom-right corner on save, edit,
+delete, complete, restore.
+
+Several other features were started in this sprint and later cut. See
+the "Scope cuts" section at the end.
 
 ---
 
-## Week 8 — The Harpr v1.1 sprint (rebrand + 12 features)
+## Weeks 11–14 — Refocus on tasks
 
-After the mid-project demo, my supervisor pointed out that "Cosmos AI
-Planner" promised an AI it didn't ship, and that the app — although tidy —
-was missing a few things he expected from a planner. I agreed, and spent
-the polish week doing both: a rebrand and a focused feature pass.
+Feedback after the mid-project review was that the app was trying to do
+too much. Two concepts were competing — Tasks and Time Logs — and most
+screens showed both.
 
-### The rebrand: Cosmos AI Planner → Harpr
+I made these decisions:
 
-The new name had to be:
+- **Keep the `TimeLog` table in the database.** Remove most of its UI. No
+data is destroyed, and if I want to bring time-logging back the model
+is still there.
+- **Keep the design language.** The point of this sprint was for the app
+to get quieter, not louder.
+- **Increase the base font size** so desktop and mobile reading are
+consistent.
 
-- short (one word, four-to-six letters),
-- not pretending to be something it isn't (no "AI"),
-- evocative of *time* and *rhythm*.
+What changed:
 
-I landed on **Harpr** — a misspelling of *harp*, which felt right because
-each task is a string in your day's chord. The tagline became
-**"Time & Activity Planner"** and the favicon became a simple emerald harp
-SVG (six strings, drawn in 24×24 viewport space).
+- Sidebar slimmed down.
+- Dashboard rebuilt: single Pending KPI, scrollable Today list, Recently
+completed panel.
+- Timeline became the main task view, grouped by due date.
+- Calendar moved from event chips to single colour-coded dots per day.
+- Toasts, delete-confirmation modal, natural-language date parser
+(hand-written regex, no library).
 
-Because the brand string appears in dozens of templates, I added a
-context processor so every template gets `APP_NAME` and `APP_TAGLINE` for
-free:
+Removing things turned out to be harder than adding them. Every deleted
+view had three or four references elsewhere — in templates, the sidebar,
+the keyboard shortcuts, the README. A final search-and-fix pass was
+necessary.
 
-```python
-# tasks/context_processors.py
-def branding(_request):
-    return {"APP_NAME": "Harpr", "APP_TAGLINE": "Time & Activity Planner"}
-```
+---
 
-That single change let me delete every hard-coded "Cosmos" string in the
-codebase and replace it with `{{ APP_NAME }}`.
+## Weeks 15–16 — Final feature pass and polish
 
-### The 12 features
+The last two weeks before submission were mostly bug fixing and cleanup,
+with a few small additions:
 
-I scoped the sprint as a numbered checklist so I'd know when I was done:
+- **Someday bucket.** Tasks with no due date sit in their own section on
+the dashboard. The Pending count includes them.
+- **AJAX toggle.** Clicking a checkbox updates the row and the Pending
+count without a full page reload. On the dashboard, the row fades out
+because completed tasks don't belong in a pending list.
+- **Activity log page.** The last 30 actions per user.
+- **Category renaming.** The Settings page exposes four inputs so the
+category labels can be changed. Colours are fixed.
+- **Demo data seeder.** `manage.py seed_demo --user=X` creates a few
+hundred realistic tasks, so screenshots don't show empty states.
 
-| # | Feature                            | Where it lives                                |
-|---|------------------------------------|-----------------------------------------------|
-| 1 | Browser notifications + reminders  | `harpr.js`, `views.reminders_due`             |
-| 2 | Task duration field                | `Task.duration_minutes`, `Task.end_time()`    |
-| 3 | Mobile-responsive layout           | `cosmos.css` `@media (max-width: 720px)`      |
-| 4 | 115% base font size                | `html { font-size: 115%; }`                   |
-| 5 | Modal popups (New task / Log time) | `harpr.js`, `_task_form_inner.html`           |
-| 6 | Search & filter on Tasks           | `task_list.html`, `views.task_list`           |
-| 7 | Completed archive                  | filter `status=completed` + `completed_at`    |
-| 8 | Soft-delete trash                  | `Task.is_deleted` + `TaskManager`             |
-| 9 | Pomodoro timer                     | dashboard card + `harpr.js` `Pomodoro` IIFE   |
-|10 | Keyboard shortcuts                 | `harpr.js` global `keydown` handler           |
-|11 | Quick "done" button                | inline `<form>` per row in `task_list.html`   |
-|12 | CSV export of timeline             | `views.timeline_export_csv`                   |
+Bugs fixed in this sprint:
 
-A few of these were a single afternoon's work; others bled into each other.
-Notes on the trickier ones:
+**The log-time modal was rendering two copies of its form.** The modal
+fetches a URL and pulls a form out of the response. But the URL was
+returning the whole page — sidebar, mobile nav, other modal shells — and
+the JS then did `querySelector('form.form-grid') || querySelector('form')`.
+The fallback selector was sometimes matching the wrong form. Fix:
 
-**Reminders without a worker.** I didn't want to add Celery or Redis just
-to fire reminders. Instead the front-end polls a small endpoint:
+1. Add `?embed=1` support to the `log_time` view so it returns only the
+form fragment when asked.
+2. Extract the form into a shared template, included by both the full
+page and the modal. One source of truth.
+3. Tighten the JS selector to a specific class, never a bare `form`
+fallback.
 
-```python
-# tasks/views.py
-@login_required
-def reminders_due(request):
-    now = timezone.now()
-    window_end = now + timezone.timedelta(seconds=60)
-    qs = (Task.objects
-          .filter(user=request.user, completed=False,
-                  remind_minutes_before__gt=0,
-                  due_date__isnull=False)
-          .annotate(remind_at=ExpressionWrapper(
-              F("due_date") - F("remind_minutes_before") * timedelta(minutes=1),
-              output_field=DateTimeField(),
-          ))
-          .filter(remind_at__gte=now, remind_at__lte=window_end))
-    return JsonResponse({"reminders": [...]})
-```
+This also fixed a subtler bug: the modal was silently submitting the wrong
+form, so `TimeLog.objects.count()` stayed at zero no matter how many times
+you saved.
 
-`harpr.js` calls it every 60 s and uses `sessionStorage` to dedupe so a
-single reminder doesn't fire twice. The honest limitation — and the one I
-called out in the README — is that this only works while a tab is open.
+**The Insights card had three different timeframes.** The pie chart was
+all-time, the line was last 7 days, the bar was all-time. Fixed by
+threading one `week_start_dt` through all three aggregations.
 
-**Soft delete.** I added `is_deleted` and `deleted_at` to `Task`, plus a
-custom manager that filters them out by default:
+**Mobile layout for Calendar and Activity.** The calendar toolbar's grid
+collapsed badly under 640px. The activity list squeezed four columns into
+phone width. Both got media-query overrides using `grid-template-areas`.
 
-```python
-class TaskManager(models.Manager):
-    def get_queryset(self):
-        return super().get_queryset().filter(is_deleted=False)
+---
 
-class Task(models.Model):
-    ...
-    objects = TaskManager()
-    all_objects = models.Manager()
-```
+## Scope cuts
 
-The `delete()` view now calls `task.soft_delete()`; the trash view uses
-`Task.all_objects.filter(is_deleted=True)`. Permanent delete is a separate
-endpoint that calls `super().delete()` directly. This caught me out once —
-I forgot to update the `TimeLog` cascade and ended up with orphan logs
-pointing at "ghost" tasks. Now permanent delete cascades, restore preserves.
+Several features were started and then removed or left incomplete. What
+was cut, and why:
 
-**Modals over full pages.** I really didn't want to bring in HTMX or Alpine
-for one feature. The pattern is fifty lines of vanilla JS in `harpr.js`:
+- **Browser notifications and reminders.** I built polling for due
+reminders and a browser-notification permission flow. Then I realised
+the whole thing only works while a tab is open, which makes the feature
+nearly useless for the use case (remembering a task an hour from now,
+when you're not looking at the app). A real implementation needs a
+service worker and a push server, which was out of scope. The
+`Task.remind_minutes_before` column stays in the database; the UI was
+removed.
+- **Pomodoro timer.** Built it, and then realised it didn't fit the
+project. The proposal is about planning and tracking, not about
+running a stopwatch. Cut.
+- **Soft-delete trash bin.** Added `is_deleted` / `deleted_at` columns
+and an `AllTaskManager`. Then I realised a two-week-old project with a
+trash bin was over-engineered for a single user. The columns stay; the
+view was never wired up.
+- **Public holidays on the calendar.** I added a `show_public_holidays`
+setting and started listing Zambian public holidays. The dataset was
+always going to be incomplete (movable feasts vary year to year), and
+the toggle was one more thing to explain in the viva. Cut.
+- **Time logging UI, then partial return.** The v1.2 sprint removed the
+standalone "Log time" page and its sidebar entry. Time logging came
+back in v1.3 as a small button inside the task edit modal. The model
+and the form were never removed, so restoring the button was a
+template change, not a migration.
 
-1. Click a button with `data-modal-fetch="/tasks/new/"`.
-2. `fetch()` the URL, parse the response HTML, lift `.form-grid` out.
-3. Open a `<dialog>`-style overlay containing that form.
-4. Intercept submit, `POST` via `fetch`, and on `2xx` reload the page; on
-   `400` swap the form body with the server-rendered errors.
+The cuts are visible in the code as columns and context-processor keys
+that nothing reads. Cleaning those up properly would be a migration, and
+it isn't worth doing for a project of this size.
 
-The same view handles both regular full-page renders and the modal
-fetch, because the modal just yanks the form fragment out of the
-already-rendered template.
+---
 
-**Pomodoro.** A 25-minute countdown using `setInterval`, with a single
-`OscillatorNode` beep at the end. Roughly 60 lines of JS, no library.
+## What I'd do differently
 
-### Process notes
+**Decide the data model early.** I spent one sprint building a
+two-concept app (Tasks + Time Logs), one sprint tearing the second
+concept out, and then brought part of it back. That's two sprints of
+work that a week-one decision would have avoided.
 
-- I built the new features behind a single migration
-  (`0002_harpr_features`) so reviewers see one tidy diff for the data
-  layer.
-- I deliberately kept the look-and-feel — the emerald accent and the
-  hairline borders carried over without changes. Only the brand mark
-  (top-left of the sidebar) moved from a gradient block to the harp SVG.
-- After the sprint I re-ran the smoke-test script from week 7 and added
-  three new endpoints to it: `/trash/`, `/settings/`, `/timeline/export.csv`.
-  All 200 OK on first try, which felt good.
+**Don't fetch full pages into modals.** The `?embed=1` pattern should
+have been in from day one. Building the modal as an afterthought meant
+every modal request was rendering the entire page (sidebar, mobile nav,
+four other modal shells) just so the client could pull out a twelve-line
+form.
 
-### What's still on the wish-list (Future work)
+**Freeze features earlier.** The last two weeks added a lot of small
+things that didn't need to be added. The right call would have been to
+freeze the feature set two weeks before submission and spend that time
+on documentation, testing, and rehearsal.
 
-- True push notifications (Service Worker + VAPID) so reminders fire when
-  the tab is closed.
-- AI assistant via Gemini (the original "Cosmos" promise — postponed, not
-  abandoned).
-- WhatsApp reminders via Twilio.
-- Recurring tasks (daily / weekly / monthly).
-- A native mobile app.
+**Write the manual as I went.** The user manual was written at the end
+in a single pass, which meant reconstructing a lot from memory. Writing
+each section as I finished the feature would have taken ten minutes a
+week and been more accurate.
+
+---
+
+## Future work
+
+- Recurring tasks (daily, weekly, monthly).
+- A trash / undelete view using the existing `is_deleted` column.
+- True push notifications via service worker.
+- Postgres instead of SQLite for deployment.
+- Password reset (needs SMTP).
 
 ---
 
 ## Acknowledgements
 
-Thanks to **Prof. J. Phiri** for weekly check-ins, the **Department of
-Computer Science** at UNZA, and the open-source maintainers of Django,
-Chart.js, and FullCalendar.
+Thanks to Prof. J. Phiri for weekly check-ins, the Department of Computer
+Science at UNZA, and the maintainers of Django, Chart.js, and FullCalendar.
 
----
-
-## Week 17 — v1.2 polish sprint (the "make it actually feel finished" pass)
-
-After the v1.1 demo my supervisor's main feedback was: *"The bones are good,
-now declutter."* He pointed out that I had two parallel concepts in the app
-(Tasks vs Time Logs) and most of my screens were trying to display both. The
-v1.2 sprint was about leaning fully into **tasks** as the primary unit of
-work, and clearing out everything that wasn't pulling its weight.
-
-### Decisions I made up front
-
-- **Keep the `TimeLog` table in the database** — but remove all of its UI.
-  This way no data is lost, and if I (or a future maintainer) want to bring
-  time-logging back, the model is still there. I removed the form, the
-  views, the URL routes, and the templates, but left `models.TimeLog`,
-  `admin.TimeLogAdmin`, and the `0001_initial` migration untouched.
-- **Keep "Mono Grid"** as the visual identity. The whole point of v1.2 is
-  that the app gets *quieter*, not louder.
-- **Target 120% font-size everywhere** so the desktop and mobile reading
-  experience are consistent.
-
-### What I actually built
-
-1. **Background and type scale** — switched the page background to the warm
-   `#f5f5f0` paper colour (with `--card` and `--muted-bg` adjusted to match)
-   and bumped `html { font-size: 120% }` for both desktop and mobile. The UI
-   reads bigger without me having to touch any individual widget.
-2. **Sidebar slimmed** — the nav is now just **Today / Timeline / Calendar
-   / Trash / Settings**. No "Log time" modal trigger, no "Analytics" link.
-   The mobile bottom-nav drops to four buttons (Today / Timeline / Calendar
-   / Settings) so the thumb-targets are bigger.
-3. **Dashboard rebuild**:
-   - Single **Pending KPI** at the top (the only number that matters).
-   - **Today list** is pending-only, sorted by due time. The list is
-     wrapped in a `.task-scroll` container with `max-height` so it shows
-     about 7 rows on desktop and 5 on mobile before scrolling — you don't
-     need to scroll the page to see everything else.
-   - Removed "Next 7 days"; added **Recently completed** (the last five
-     completed tasks with their completion timestamps). It's a tiny win-list
-     and people genuinely like seeing it.
-   - The Pomodoro card now has a **⚙ Settings** button. Clicking it opens a
-     modal with a number input (1–180 min) that shows a friendly hint
-     ("1hr 56min") for any value over an hour. The choice persists in
-     `localStorage`. I removed the "Linked task" picker — without time
-     logging it had no purpose.
-4. **Timeline rebuild** — this used to be the time-log history; now it's
-   **the main task view, grouped by due date**. The grouping order is
-   Today → Tomorrow → next few weekdays → future dates → "Earlier"
-   (overdue, most-recent-first) → "Someday" (no date). Each group shows
-   its own row count. Overdue tasks **stay on their original date** rather
-   than getting silently moved to today, which my supervisor felt was much
-   more honest.
-5. **CSV export** now writes `harpr_tasks.csv` with one row per task and
-   the columns Title / Description / Due date / Duration / Category /
-   Priority / Completed / Completed at / Reminder.
-6. **Calendar dots + day-click modal**:
-   - Replaced the per-day event chips with a single **green dot** placed by
-     `dayCellDidMount` on any cell whose date appears in the events list.
-   - Wired up `dateClick` (and `eventClick`) to fetch
-     `/calendar/day/<y>-<m>-<d>/` and pop a modal with the day's tasks,
-     each with its own toggle button and edit link.
-7. **Delete confirmation modal** — every Delete button (on Timeline and in
-   the edit modal) carries `data-delete-task="…"`. A global click handler
-   in `harpr.js` opens a small dialog ("Move *X* to the Trash?") and POSTs
-   the form for you. The full-page `task_confirm_delete.html` is kept as a
-   fallback for non-JS users.
-8. **Toast notifications** — I added a fixed `#toast-container` to
-   `base.html` and a `toast(msg, kind)` helper in `harpr.js`. Two pathways
-   feed it:
-   - On every page load, the JS scans `[data-messages] .message` for any
-     server-rendered Django messages and pops them as toasts.
-   - For modal-form submits, the JS queues the success toast in
-     `sessionStorage` *before* reloading the page, then drains the queue
-     after reload. The result is that "Task added" / "Task updated" /
-     "Task moved to trash" all show as a small notification in the corner
-     instead of as a banner inside the page.
-9. **Natural-language date parser on the title field** — added the
-   chrono-node 2.7.5 CDN script to `base.html` and a small helper in
-   `harpr.js` (`attachChronoToForm`) that runs after the task modal loads.
-   It debounces input on the title field, parses the text with `chrono`,
-   and (only if the user hasn't manually set a date) fills the
-   `datetime-local` input. A small green hint shows the detected phrase
-   and the parsed timestamp, with a one-click **clear** link.
-10. **Notifications-button fix** — in v1.1 the Settings page had a
-    "Request browser permission" button but the `click` listener was
-    declared inside an immediately-invoked function that referenced
-    `btn.disabled = true` only on the unsupported branch, and the
-    listener wasn't always attached on first paint. I rewrote the script
-    to wait for `DOMContentLoaded`, double-checked the button exists,
-    pop a toast on grant/deny, and added an inline note in the card body
-    explaining that mobile notifications work best on Android Chrome and
-    on iOS only when added to the Home Screen.
-11. **Dark-mode toggle in Settings** — a checkbox that simply mirrors
-    `data-theme` on `<html>` and persists `cosmos-theme` in
-    `localStorage`. The sidebar's ☀ / ☾ button still works the same.
-12. **Cleanup** — deleted the now-orphaned templates
-    (`analytics.html`, `task_list.html`, `timelog_form.html`,
-    `_timelog_form_inner.html`), removed `TimeLogForm` from `forms.py`,
-    and pruned all references to `log_time` / `analytics` from the
-    sidebar, the dashboard, and the keyboard-shortcut help.
-
-### Files I touched or replaced
-
-- `tasks/views.py` — rewrote `dashboard`, replaced the old `timeline` view
-  with the new date-grouped task view, removed `analytics` and `log_time`,
-  added `task_list_redirect` and `calendar_day_tasks`.
-- `tasks/urls.py` — removed `/log/`, `/analytics/`, the old `/timeline/`
-  route; added `/timeline/`, `/timeline/export.csv`, `/calendar/day/...`,
-  and a backward-compat redirect for `/tasks/`.
-- `tasks/forms.py` — removed `TimeLogForm`; added the `data-chrono="1"`
-  attribute to the task title input so the JS knows where to attach.
-- `static/css/cosmos.css` — new `--bg` and friends, 120% font-size both
-  desktop and mobile, plus brand-new sections for `.timeline-group`,
-  `.task-scroll`, calendar `.has-tasks` dot, `#toast-container`,
-  `.chrono-hint`, `.pomodoro-settings-btn`, and the delete-modal styling.
-- `static/js/harpr.js` — full rewrite. Now owns toasts, modal management,
-  delete-modal, day-tasks modal, chrono-node integration, and reminder
-  polling. The keyboard-shortcut handler dropped `L` and `A` and added
-  `D` for the dashboard.
-- `static/js/calendar.js` — switched to `dayCellDidMount`-based dots,
-  added `dateClick` → day-tasks modal.
-- `templates/base.html` — new sidebar, new mobile nav, new modals
-  (delete, day-tasks, pomodoro settings, shortcuts) and the chrono-node
-  CDN script tag.
-- `tasks/templates/tasks/dashboard.html` — rewrite (single KPI,
-  scrollable Today list, Pomodoro w/ settings, Recently completed).
-- `tasks/templates/tasks/timeline.html` — brand-new template for the
-  date-grouped task view.
-- `tasks/templates/tasks/_task_form_inner.html` — Cancel button now
-  routes to `{% url 'timeline' %}`; the Delete button now opens the
-  confirmation modal instead of navigating away.
-- `tasks/templates/tasks/calendar.html` — added `data-events-url` to
-  the calendar div, plus a one-line "click any day to see tasks" hint.
-- `tasks/templates/tasks/settings.html` — added the dark-mode toggle,
-  the mobile-notifications note, and the corrected permission-button
-  script with toast feedback.
-- Deleted: `analytics.html`, `task_list.html`, `timelog_form.html`,
-  `_timelog_form_inner.html`.
-
-### What I deliberately *didn't* do
-
-- **No new model migrations.** All v1.2 work is at the view / template /
-  static-asset layer. The existing schema (Task, TimeLog, UserSettings)
-  is unchanged, and no data is destroyed.
-- **No service-worker push notifications.** Still listed under Future
-  work in the README. The current approach (poll while open) is enough
-  for an honest demo, and a service worker is a bigger commitment than
-  this sprint warranted.
-- **No backend changes to FullCalendar's events endpoint.** The day-modal
-  re-uses `Task.objects.filter(...due_date in [day, day+1))` rather than
-  any new aggregation logic, so the data the calendar shows and the data
-  the day-modal shows are guaranteed to agree.
-
-### What I learned
-
-- **Removing things is harder than adding them.** Every view I deleted had
-  three or four references in templates, the sidebar, the keyboard
-  shortcuts, the README, and the manual. A search-and-fix pass at the end
-  was essential.
-- **Toast notifications change the feel of an app dramatically** for very
-  little code. The hardest part was making them survive the page reload
-  after a modal submit; `sessionStorage` is the right tool for that.
-- **Natural-language date parsing is genuinely magical** when it works,
-  and chrono-node is small enough to load over CDN. Showing a "Detected:
-  …" hint with an undo link removes almost all of the surprise from
-  surprise auto-fill.
-
----
-
-## v1.3 — Final feature pass (April 2026)
-
-This sprint applied a 19-item explicit feature list on top of v1.2. The
-shape of the app, the Mono Grid design language, and the dark/light toggle
-are unchanged.
-
-### New / changed behaviour
-
-1. **New-task defaults.** Opening the New-task modal pre-fills the due-date
-   to *now + 2 hours, rounded to the next 30 minutes*, and the reminder
-   to *5 minutes before*. Edit-task does **not** apply defaults.
-2. **Regex natural-language date parser.** `chrono-node` is replaced with a
-   tiny in-house regex parser that handles `today`, `tomorrow`, `next
-   monday`, `in 3 days`, `Apr 30`, `5pm`, `at 17:30`, and combinations.
-3. **Someday bucket.** Tasks created without a due date are kept in a new
-   *Someday* section on the dashboard. Order is fixed: TODAY → SOMEDAY →
-   TOMORROW. The Pending KPI counts *today + someday only*.
-4. **Tomorrow section.** A read-only preview of tomorrow's pending tasks
-   sits below Someday on the dashboard.
-5. **Calendar dots coloured by category.** Each day with at least one
-   pending task gets a single dot whose colour is the highest-precedence
-   category (Urgent &rsaquo; Work &rsaquo; Study &rsaquo; Personal &rsaquo;
-   Health). A legend is shown below the calendar.
-6. **Urgent priority.** A new priority above High; renders as a red pill,
-   pushes affected rows to the top of every list, and gives them a red
-   left border.
-7. **Category renaming.** Settings exposes 4 category-label inputs (Work /
-   Study / Personal / Health). Colours are fixed; only the label changes.
-8. **Timeline order.** Groups are now strictly chronological:
-   PAST → TODAY → TOMORROW → FUTURE.
-9. **Floating Today button.** When the timeline scrolls away from the
-   *Today* group, a fixed-position pill appears in the bottom-right and
-   smoothly scrolls back.
-10. **Bounded list height.** The dashboard and timeline scroll containers
-    are capped at 500 px on desktop and 400 px on mobile, so the rest of
-    the page is always reachable.
-11. **AJAX task-toggle.** Clicking the checkbox no longer reloads the
-    page. The server returns JSON; the row fades out (or just toggles
-    its line-through), and the Pending KPI updates in place.
-12. **Pomodoro reset confirm.** Resetting a running timer prompts
-    *"Reset timer? Your progress will be lost."* before clearing.
-13. **Pomodoro sound + notification.** Two short beeps + a browser
-    notification fire at the end of a Pomodoro, both gated by independent
-    Settings toggles.
-14. **Activity log page.** Last 30 actions (created / updated / completed /
-    re-opened / deleted / restored) for the current user, with a link to
-    the trash for soft-deleted items.
-15. **Calendar list view label.** List view headings now read
-    *"Monday, Apr 28"*.
-16. **Zambian public holidays.** Optional Settings toggle. When on, the
-    13 standard public holidays (incl. movable Easter dates 2024–2028)
-    render as gray, non-editable events on the calendar.
-17. **Exact FullCalendar overrides.** Buttons, day cells, list view, and
-    holiday events all match the Mono Grid design tokens.
-18. **Quick Actions removed.** The 2×2 grid on the dashboard is gone;
-    every action it duplicated already lives in the sidebar or the
-    floating *+ New task* button.
-19. **Demo data seeder.** `manage.py seed_demo --user=milimo` creates
-    35 representative tasks (today, tomorrow, future, urgent, someday,
-    completed past). Idempotent — re-running cleans prior demo tasks
-    first.
-
-### Schema changes (migration `0003_v13_features`)
-
-- `Task.priority` choices extended: `urgent` (added), high, medium, low.
-- `Task.due_date` becomes nullable (Someday tasks have no due date).
-- New model `ActivityLog` (capped at 30 rows per user, enforced in
-  `ActivityLog.record()`).
-- `UserSettings` gains `pomodoro_sound_enabled`,
-  `pomodoro_notification_enabled`, `show_public_holidays`, and four
-  category-label fields.
-
-### Files added / changed
-
-- **Added**: `tasks/management/commands/seed_demo.py`,
-  `tasks/templatetags/harpr_extras.py`,
-  `tasks/context_processors.py`,
-  `tasks/templates/tasks/activity_log.html`,
-  `tasks/templates/tasks/_dashboard_row.html`,
-  `tasks/migrations/0003_v13_features.py`.
-- **Rewritten**: `tasks/views.py`, `tasks/forms.py`,
-  `tasks/templates/tasks/{dashboard,timeline,calendar,settings,_task_form_inner}.html`,
-  `templates/base.html`, `static/js/{harpr,calendar}.js`,
-  `static/css/cosmos.css` (additive — Mono Grid tokens preserved).
-
-### What I deliberately *didn't* do
-
-- **Touch the Mono Grid design tokens** or the dark/light CSS variables.
-- **Add server-sent events / push.** The reminder + Pomodoro hooks
-  continue to use the existing in-tab polling and Web Notifications API.
-- **Persist Activity-log entries beyond 30.** The cap is enforced in
-  `ActivityLog.record()` so the table stays bounded for every user.
